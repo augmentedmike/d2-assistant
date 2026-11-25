@@ -352,7 +352,8 @@ mod tests {
     #[test]
     #[ignore = "requires a local stash save; private fixtures are not distributed"]
     fn parse_local_stash_fixture() {
-        let path = std::env::var("D2A_TEST_STASH").expect("set D2A_TEST_STASH to a local .d2x file");
+        let path =
+            std::env::var("D2A_TEST_STASH").expect("set D2A_TEST_STASH to a local .d2x file");
         let data = parse_d2x(&path).expect("stash should parse");
         assert!(data.file_size > 0);
     }

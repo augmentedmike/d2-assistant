@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
 import Runewords from './Runewords'
 import {
@@ -8,10 +8,13 @@ import {
   bankDeleteItem,
   bankImportStashItems,
   bankExportItems,
+  characterBackupHistory,
+  characterRestoreBackup,
 } from './lib/tauri'
 import type {
   CharacterListing,
   CharacterData,
+  CharacterBackupVersion,
   BankItem,
 } from './lib/tauri'
 
@@ -94,9 +97,11 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('characters')
   const [saveDir, setSaveDir] = useState(() => localStorage.getItem('d2-assistant.save-directory') ?? '')
   const [showExtendedRecipes, setShowExtendedRecipes] = useState(() => localStorage.getItem('d2-assistant.extended-recipes') === 'true')
+  const [autoCharacterBackups, setAutoCharacterBackups] = useState(() => localStorage.getItem('d2-assistant.auto-character-backups') !== 'false')
   const [characters, setCharacters] = useState<CharacterListing[]>([])
   const [selected, setSelected] = useState<CharacterListing | null>(null)
   const [characterData, setCharacterData] = useState<CharacterData | null>(null)
+  const [characterBackups, setCharacterBackups] = useState<CharacterBackupVersion[]>([])
   const [bankItems, setBankItems] = useState<BankItem[]>([])
   const [selectedBankIds, setSelectedBankIds] = useState<Set<number>>(new Set())
   const [transferCharacterPath, setTransferCharacterPath] = useState('')
@@ -113,6 +118,7 @@ export default function App() {
   const [socketFilter, setSocketFilter] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const selectedCharacterPath = useRef<string | null>(null)
 
   const loadCharacters = useCallback(async () => {
     if (!saveDir.trim()) {
@@ -122,15 +128,17 @@ export default function App() {
     setLoading(true)
     setError(null)
     try {
-      const found = await scanCharacters(saveDir)
+      const found = await scanCharacters(saveDir, autoCharacterBackups)
       setCharacters(found)
+      setSelected((current) => current ? found.find((character) => character.path === current.path) ?? current : null)
       setTransferCharacterPath((current) => current || found[0]?.path || '')
+      if (selectedCharacterPath.current) setCharacterBackups(await characterBackupHistory(selectedCharacterPath.current))
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)
     }
-  }, [saveDir])
+  }, [saveDir, autoCharacterBackups])
 
   const loadBank = useCallback(async () => {
     setLoading(true)
@@ -158,6 +166,10 @@ export default function App() {
   }, [showExtendedRecipes])
 
   useEffect(() => {
+    localStorage.setItem('d2-assistant.auto-character-backups', String(autoCharacterBackups))
+  }, [autoCharacterBackups])
+
+  useEffect(() => {
     const timeout = window.setTimeout(() => {
       if (tab === 'characters' && saveDir) void loadCharacters()
       if (tab === 'bank') {
@@ -169,14 +181,41 @@ export default function App() {
   }, [tab, saveDir, loadBank, loadCharacters])
 
   const handleSelect = async (char: CharacterListing) => {
+    selectedCharacterPath.current = char.path
     setSelected(char)
     setLoading(true)
     setError(null)
     try {
-      setCharacterData(await parseCharacter(char.path))
+      const [data, versions] = await Promise.all([
+        parseCharacter(char.path),
+        characterBackupHistory(char.path),
+      ])
+      setCharacterData(data)
+      setCharacterBackups(versions)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setCharacterData(null)
+      setCharacterBackups([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRestoreCharacterBackup = async (version: CharacterBackupVersion) => {
+    if (!selected) return
+    const confirmed = window.confirm(
+      `Restore the character save from ${formatWhen(version.created_at)}? The current save will be backed up first. This replaces the selected .d2s file.`,
+    )
+    if (!confirmed) return
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await characterRestoreBackup(selected.path, version.id)
+      setNotice(result)
+      await loadCharacters()
+      await handleSelect(selected)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)
     }
@@ -560,6 +599,37 @@ export default function App() {
                       </div>
                     </div>
 
+                    {selected.backup_warning && (
+                      <div className="md:col-span-2 rounded border border-amber-900/60 bg-amber-950/30 p-3 text-xs text-amber-200">
+                        Automatic backup could not be created: {selected.backup_warning}
+                      </div>
+                    )}
+
+                    <section className="md:col-span-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+                      <div className="mb-3 flex items-start justify-between gap-4">
+                        <div>
+                          <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-300">Save history</h2>
+                          <p className="mt-1 text-xs text-gray-500">Verified versions are stored locally. Restoring replaces this save after backing up its current version.</p>
+                        </div>
+                        <button onClick={() => void handleSelect(selected)} disabled={loading} className="rounded border border-neutral-700 px-3 py-1.5 text-xs text-gray-300 hover:bg-neutral-800 disabled:opacity-50">Refresh</button>
+                      </div>
+                      {characterBackups.length === 0 ? (
+                        <p className="text-xs text-gray-500">No saved versions yet. Automatic backups are {autoCharacterBackups ? 'on' : 'off'}.</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {characterBackups.map((version) => (
+                            <li key={version.id} className="flex flex-wrap items-center justify-between gap-3 rounded border border-neutral-800 bg-neutral-950/60 px-3 py-2">
+                              <div>
+                                <div className="text-sm text-white">{formatWhen(version.created_at)}</div>
+                                <div className="text-xs text-gray-500">{(version.file_size / 1024).toFixed(1)} KB · verified</div>
+                              </div>
+                              <button onClick={() => void handleRestoreCharacterBackup(version)} disabled={loading} className="rounded border border-amber-900/70 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-950/50 disabled:opacity-50">Restore this version</button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </section>
+
                     <section className="md:col-span-2 bg-neutral-900 border border-neutral-800 rounded-lg p-4">
                       <div className="flex items-start justify-between gap-4 mb-3">
                         <div>
@@ -813,6 +883,15 @@ export default function App() {
                 <span>
                   <span className="block text-sm font-semibold text-white">Show D2R and Reign of the Warlock recipe references</span>
                   <span className="mt-1 block text-xs leading-relaxed text-gray-400">Off by default. When enabled, the Recipes tab includes non-LoD runewords with game and expansion warnings. This does not add D2R save-file support.</span>
+                </span>
+              </label>
+            </section>
+            <section className="mt-4 rounded-lg border border-neutral-800 bg-neutral-900/70 p-4">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input type="checkbox" checked={autoCharacterBackups} onChange={(event) => setAutoCharacterBackups(event.target.checked)} className="mt-1 accent-red-700" />
+                <span>
+                  <span className="block text-sm font-semibold text-white">Automatically back up changed character saves</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-gray-400">On by default. D2 Assistant saves one verified local version when a character save changes and you scan or refresh the folder. You can restore a saved version from that character’s Save history. Restores always preserve the current version first.</span>
                 </span>
               </label>
             </section>

@@ -14,7 +14,9 @@ use d2x::{
     StashData, empty_d2x_stash, parse_d2x, read_transferable_stash_items,
     requirements_from_item_record,
 };
+use rusqlite::OptionalExtension;
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::{Manager, command};
@@ -45,6 +47,14 @@ pub struct CharacterListing {
     pub level: u8,
     pub file_size: u64,
     pub modified: u64,
+    pub backup_warning: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CharacterBackupVersion {
+    pub id: i64,
+    pub created_at: i64,
+    pub file_size: u64,
 }
 
 fn now_secs() -> Result<i64, String> {
@@ -82,7 +92,11 @@ fn parse_stash(path: String) -> ParseResult<StashData> {
 }
 
 #[command]
-fn scan_characters(dir: String) -> ParseResult<Vec<CharacterListing>> {
+fn scan_characters(
+    app: tauri::AppHandle,
+    dir: String,
+    auto_backups: bool,
+) -> ParseResult<Vec<CharacterListing>> {
     let path = Path::new(&dir);
     if !path.is_dir() {
         return ParseResult::Err(format!("not a directory: {}", dir));
@@ -118,6 +132,14 @@ fn scan_characters(dir: String) -> ParseResult<Vec<CharacterListing>> {
                     .unwrap_or(0);
 
                 let parsed = parse_d2s(file_path.to_str().unwrap_or(""));
+                let backup_warning = if auto_backups && parsed.is_ok() {
+                    match capture_character_backup(&app, &file_path, false) {
+                        Ok(_) => None,
+                        Err(error) => Some(error),
+                    }
+                } else {
+                    None
+                };
                 let (name, class, level) = match &parsed {
                     Ok(data) => (data.name.clone(), format!("{:?}", data.class), data.level),
                     Err(_) => (file_name.replace(".d2s", ""), "Unknown".to_string(), 0),
@@ -130,6 +152,7 @@ fn scan_characters(dir: String) -> ParseResult<Vec<CharacterListing>> {
                     level,
                     file_size,
                     modified,
+                    backup_warning,
                 });
             }
             listings.sort_by(|a, b| b.modified.cmp(&a.modified));
@@ -140,6 +163,174 @@ fn scan_characters(dir: String) -> ParseResult<Vec<CharacterListing>> {
     }
 
     ParseResult::Ok(listings)
+}
+
+fn content_fingerprint(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
+}
+
+fn character_backup_root(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let app_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("failed to get app data dir: {e}"))?;
+    let root = app_dir.join("character-backups");
+    fs::create_dir_all(&root).map_err(|e| format!("failed to create backup directory: {e}"))?;
+    Ok(root)
+}
+
+fn capture_character_backup(
+    app: &tauri::AppHandle,
+    character_path: &Path,
+    force: bool,
+) -> Result<Option<CharacterBackupVersion>, String> {
+    let original_path = character_path.to_string_lossy().to_string();
+    let bytes = fs::read(character_path).map_err(|e| {
+        format!(
+            "could not read character save {}: {e}",
+            character_path.display()
+        )
+    })?;
+    D2Save::from_bytes(&bytes)
+        .map_err(|e| format!("character save could not be validated before backup: {e}"))?;
+    let fingerprint = content_fingerprint(&bytes);
+    let conn = open_app_db(app)?;
+    let latest_fingerprint: Option<String> = conn
+        .query_row(
+            "SELECT content_fingerprint FROM character_backups WHERE original_path = ?1 ORDER BY created_at DESC, id DESC LIMIT 1",
+            [&original_path],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|e| format!("could not inspect character backup history: {e}"))?;
+    if !force && latest_fingerprint.as_deref() == Some(fingerprint.as_str()) {
+        return Ok(None);
+    }
+
+    let path_key = content_fingerprint(original_path.as_bytes());
+    let folder = character_backup_root(app)?.join(path_key);
+    fs::create_dir_all(&folder).map_err(|e| format!("could not create character history: {e}"))?;
+    let timestamp = now_secs()?;
+    let base = folder.join(format!("save-{timestamp}-{fingerprint}.d2s"));
+    let mut snapshot_path = base.clone();
+    let mut suffix = 1;
+    while snapshot_path.exists() {
+        snapshot_path = folder.join(format!("save-{timestamp}-{fingerprint}-{suffix}.d2s"));
+        suffix += 1;
+    }
+    fs::write(&snapshot_path, &bytes)
+        .map_err(|e| format!("could not write character backup: {e}"))?;
+    let verified_bytes =
+        fs::read(&snapshot_path).map_err(|e| format!("could not verify character backup: {e}"))?;
+    if verified_bytes != bytes || content_fingerprint(&verified_bytes) != fingerprint {
+        let _ = fs::remove_file(&snapshot_path);
+        return Err("character backup verification failed".into());
+    }
+    D2Save::from_bytes(&verified_bytes)
+        .map_err(|e| format!("character backup failed save validation: {e}"))?;
+    let created_at = now_secs()?;
+    conn.execute(
+        "INSERT INTO character_backups (original_path, snapshot_path, content_fingerprint, file_size, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+        rusqlite::params![original_path, snapshot_path.to_string_lossy(), fingerprint, bytes.len() as u64, created_at],
+    )
+    .map_err(|e| format!("could not record character backup: {e}"))?;
+    Ok(Some(CharacterBackupVersion {
+        id: conn.last_insert_rowid(),
+        created_at,
+        file_size: bytes.len() as u64,
+    }))
+}
+
+#[command]
+fn character_backup_history(
+    app: tauri::AppHandle,
+    character_path: String,
+) -> Result<Vec<CharacterBackupVersion>, String> {
+    let conn = open_app_db(&app)?;
+    let mut statement = conn
+        .prepare("SELECT id, created_at, file_size FROM character_backups WHERE original_path = ?1 ORDER BY created_at DESC, id DESC")
+        .map_err(|e| format!("could not read character backup history: {e}"))?;
+    statement
+        .query_map([character_path], |row| {
+            Ok(CharacterBackupVersion {
+                id: row.get(0)?,
+                created_at: row.get::<_, i64>(1)?,
+                file_size: row.get::<_, u64>(2)?,
+            })
+        })
+        .map_err(|e| format!("could not read character backup history: {e}"))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("could not read character backup history: {e}"))
+}
+
+#[command]
+fn character_restore_backup(
+    app: tauri::AppHandle,
+    character_path: String,
+    backup_id: i64,
+) -> Result<String, String> {
+    let conn = open_app_db(&app)?;
+    let (snapshot_path, expected_fingerprint): (String, String) = conn
+        .query_row(
+            "SELECT snapshot_path, content_fingerprint FROM character_backups WHERE id = ?1 AND original_path = ?2",
+            rusqlite::params![backup_id, character_path],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(|e| format!("backup version was not found: {e}"))?;
+    let snapshot_bytes =
+        fs::read(&snapshot_path).map_err(|e| format!("could not read backup version: {e}"))?;
+    if content_fingerprint(&snapshot_bytes) != expected_fingerprint {
+        return Err("selected backup failed its integrity check".into());
+    }
+    D2Save::from_bytes(&snapshot_bytes)
+        .map_err(|e| format!("selected backup is not a valid character save: {e}"))?;
+
+    let target_path = PathBuf::from(&character_path);
+    if !target_path.is_file() {
+        return Err("character save no longer exists at this path".into());
+    }
+    let current_bytes = fs::read(&target_path)
+        .map_err(|e| format!("could not reread current character save: {e}"))?;
+    if content_fingerprint(&current_bytes) == expected_fingerprint {
+        return Ok("selected backup already matches the character save".into());
+    }
+    capture_character_backup(&app, &target_path, true)?;
+    let timestamp = now_secs()?;
+    let temp_path = unique_sidecar_path(&target_path, "restore-tmp", timestamp);
+    let displaced_path = unique_sidecar_path(&target_path, "restore-current", timestamp);
+    fs::write(&temp_path, &snapshot_bytes)
+        .map_err(|e| format!("could not prepare restored save: {e}"))?;
+    fs::rename(&target_path, &displaced_path)
+        .map_err(|e| format!("could not preserve current character save: {e}"))?;
+    if let Err(error) = fs::rename(&temp_path, &target_path) {
+        let _ = fs::rename(&displaced_path, &target_path);
+        let _ = fs::remove_file(&temp_path);
+        return Err(format!("could not restore character save: {error}"));
+    }
+    let restored = match fs::read(&target_path) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            let _ = fs::remove_file(&target_path);
+            let _ = fs::rename(&displaced_path, &target_path);
+            return Err(format!(
+                "restored save could not be reread; previous save was put back: {error}"
+            ));
+        }
+    };
+    let valid = restored == snapshot_bytes
+        && content_fingerprint(&restored) == expected_fingerprint
+        && D2Save::from_bytes(&restored).is_ok();
+    if !valid {
+        let _ = fs::remove_file(&target_path);
+        let _ = fs::rename(&displaced_path, &target_path);
+        return Err("restored save failed verification; the previous save was put back".into());
+    }
+    fs::remove_file(&displaced_path)
+        .map_err(|e| format!("restored save is valid, but temporary cleanup failed: {e}"))?;
+    Ok(format!(
+        "restored character save at {}",
+        target_path.display()
+    ))
 }
 
 fn app_db_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -170,6 +361,19 @@ fn open_app_db(app: &tauri::AppHandle) -> Result<rusqlite::Connection, String> {
 }
 
 fn init_app_db(conn: &rusqlite::Connection) -> Result<(), String> {
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS character_backups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            original_path TEXT NOT NULL,
+            snapshot_path TEXT NOT NULL,
+            content_fingerprint TEXT NOT NULL,
+            file_size INTEGER NOT NULL,
+            created_at INTEGER NOT NULL
+        )",
+        [],
+    )
+    .map_err(|e| format!("failed to init character backup history: {e}"))?;
+
     conn.execute(
         "CREATE TABLE IF NOT EXISTS bank_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -806,6 +1010,8 @@ pub fn run() {
             parse_character,
             parse_stash,
             scan_characters,
+            character_backup_history,
+            character_restore_backup,
             bank_add_item,
             bank_delete_item,
             bank_get_items,

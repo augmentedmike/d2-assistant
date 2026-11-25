@@ -7,6 +7,13 @@ export interface CharacterListing {
   level: number
   file_size: number
   modified: number
+  backup_warning: string | null
+}
+
+export interface CharacterBackupVersion {
+  id: number
+  created_at: number
+  file_size: number
 }
 
 export interface CharacterData {
@@ -86,10 +93,21 @@ function unwrapParseResult<T>(result: ParseResult<T>): T {
   return result.data
 }
 
-export async function scanCharacters(dir: string): Promise<CharacterListing[]> {
+export async function scanCharacters(
+  dir: string,
+  autoBackups: boolean,
+): Promise<CharacterListing[]> {
   return unwrapParseResult(
-    await invoke<ParseResult<CharacterListing[]>>('scan_characters', { dir }),
+    await invoke<ParseResult<CharacterListing[]>>('scan_characters', { dir, autoBackups }),
   )
+}
+
+export async function characterBackupHistory(characterPath: string): Promise<CharacterBackupVersion[]> {
+  return await invoke<CharacterBackupVersion[]>('character_backup_history', { characterPath })
+}
+
+export async function characterRestoreBackup(characterPath: string, backupId: number): Promise<string> {
+  return await invoke<string>('character_restore_backup', { characterPath, backupId })
 }
 
 export async function parseCharacter(path: string): Promise<CharacterData> {
