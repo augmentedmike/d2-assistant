@@ -23,7 +23,7 @@ This is the public project task list. Completed work is recorded in `CHANGELOG.m
 - [ ] Gate the editor behind a local experimental feature flag; show a review and require confirmation before any write.
 - [ ] Write only validated `_d2a` copies and back up prior outputs; never modify originals.
 - [x] Add automatic, versioned character-save backups behind a local setting that defaults on.
-- [x] Detect changed saves by checksum on app start and folder refresh; save one timestamped, verified snapshot per new version.
+- [x] Detect changed saves by SHA-256 on app start, folder refresh, and background checks while the app is open; save one timestamped, verified snapshot per new version.
 - [x] Add character backup history with timestamps and verification status.
 - [x] Add confirmed restore with a verified backup of the current save, atomic write, and post-restore validation.
 - [ ] Add local retention controls and disclose backup storage location.

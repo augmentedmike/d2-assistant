@@ -132,10 +132,13 @@ fn scan_characters(
                     .unwrap_or(0);
 
                 let parsed = parse_d2s(file_path.to_str().unwrap_or(""));
-                let backup_warning = if auto_backups && parsed.is_ok() {
-                    match capture_character_backup(&app, &file_path, false) {
-                        Ok(_) => None,
-                        Err(error) => Some(error),
+                let backup_warning = if auto_backups {
+                    match &parsed {
+                        Ok(_) => match capture_character_backup(&app, &file_path, false) {
+                            Ok(_) => None,
+                            Err(error) => Some(error),
+                        },
+                        Err(error) => Some(format!("save could not be parsed for backup: {error}")),
                     }
                 } else {
                     None

@@ -41,7 +41,7 @@ D2 Assistant is a local desktop item bank and transfer helper for offline charac
 ## Next version — character backup history and restore
 
 - Add a local preference for automatic versioned character-save backups; enabled by default.
-- On app start and character-folder refresh, detect changed selected `.d2s` saves by checksum and create one timestamped, checksum-verified backup for each new version; repeated scans must not create duplicate snapshots.
+- On app start, character-folder refresh, and every 30 seconds while the app is open, detect changed selected `.d2s` saves by SHA-256 and create one timestamped, checksum-verified backup for each new version; repeated scans must not create duplicate snapshots.
 - Create a verified pre-change backup before every app operation that writes or restores a character save.
 - Show each character's backup history with timestamp, file size, and verification status.
 - Let users preview and restore a selected version with a clear confirmation. Before restoring over a save, preserve the current version, write atomically, and validate the restored save.

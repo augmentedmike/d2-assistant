@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Added default-on, local versioned character-save backups with change detection, history, and confirmed restore. Restores preserve and validate the current save first.
+- Added default-on, local versioned character-save backups with 30-second background change detection, history, and confirmed restore. Restores preserve and validate the current save first.
 
 ## 0.1.0 — Initial desktop release
 

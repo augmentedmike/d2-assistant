@@ -140,6 +140,20 @@ export default function App() {
     }
   }, [saveDir, autoCharacterBackups])
 
+  const monitorCharacterFolder = useCallback(async () => {
+    if (!saveDir.trim() || !autoCharacterBackups) return
+    try {
+      const found = await scanCharacters(saveDir, true)
+      setCharacters(found)
+      setSelected((current) => current ? found.find((character) => character.path === current.path) ?? current : null)
+      if (selectedCharacterPath.current) {
+        setCharacterBackups(await characterBackupHistory(selectedCharacterPath.current))
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }, [saveDir, autoCharacterBackups])
+
   const loadBank = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -168,6 +182,12 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('d2-assistant.auto-character-backups', String(autoCharacterBackups))
   }, [autoCharacterBackups])
+
+  useEffect(() => {
+    if (!saveDir.trim() || !autoCharacterBackups) return
+    const interval = window.setInterval(() => void monitorCharacterFolder(), 30_000)
+    return () => window.clearInterval(interval)
+  }, [saveDir, autoCharacterBackups, monitorCharacterFolder])
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -891,7 +911,7 @@ export default function App() {
                 <input type="checkbox" checked={autoCharacterBackups} onChange={(event) => setAutoCharacterBackups(event.target.checked)} className="mt-1 accent-red-700" />
                 <span>
                   <span className="block text-sm font-semibold text-white">Automatically back up changed character saves</span>
-                  <span className="mt-1 block text-xs leading-relaxed text-gray-400">On by default. D2 Assistant saves one verified local version when a character save changes and you scan or refresh the folder. You can restore a saved version from that character’s Save history. Restores always preserve the current version first.</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-gray-400">On by default. While D2 Assistant is open, it checks the selected folder every 30 seconds and saves one verified local version when a character save changes. You can restore a saved version from that character’s Save history. Restores always preserve the current version first.</span>
                 </span>
               </label>
             </section>
