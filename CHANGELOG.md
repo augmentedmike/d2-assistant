@@ -2,7 +2,10 @@
 
 ## Unreleased
 
-- Added separate carried (belt/inventory) and personal stash gold editing for classic LoD version 96 saves, with level/stash caps, a review prompt, and `_d2a` output.
+- Changed character gold controls to inline editable carried/stash values with automatic caps and per-value Max out buttons.
+- Changed gold editing to update the selected save in place after creating a verified versioned backup; no extra character file is created.
+- Changed bank transfers to update the selected character file in place after creating a verified pre-change backup.
+- Added separate carried (belt/inventory) and personal stash gold editing for classic LoD version 96 saves, with level/stash caps and a review prompt.
 - Added default-on, local versioned character-save backups with 30-second background change detection. The first scan records a baseline without creating a version; the first observation only records a baseline, and a version is created only after contents change. Backup history shows the latest five first, with an option to expand.
 - Added confirmed backup restore; the current save is preserved and the restored save is validated.
 

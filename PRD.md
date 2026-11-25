@@ -19,14 +19,14 @@ D2 Assistant is a local desktop item bank and transfer helper for offline charac
 2. Back up and import items from supported stashes into a searchable local bank.
 3. Filter by item type, rarity, class/level requirements, sockets, and transfer status.
 4. Keep multi-selection while refining filters and transfer selected items to a chosen character inventory or personal stash.
-5. Preserve original character files; write only `_d2a` copies, back up a prior `_d2a`, and validate generated saves.
+5. Back up the selected character save before any edit or item transfer, update that save in place, and validate the result to avoid generating duplicate character files.
 6. Browse offline runeword recipes with ordered runes, sockets, valid bases, effects, and availability labels.
 7. Let users opt into or out of optional feature sets locally through the Features screen. Extended D2R/Reign recipe references are off by default; safety behavior cannot be disabled.
 
 ## Safety requirements
 
 - Show the selected source path and explain that a full stash import creates a verified backup and empties the selected stash after import.
-- Character exports write only to `_d2a` paths. Replacing a selected save during an explicit restore requires a confirmation and a verified pre-restore backup.
+- Gold edits and bank item transfers update the selected character save in place only after a verified backup. Restoring a backup requires confirmation and creates a verified pre-restore backup.
 - Back up an existing app-generated file before replacing it.
 - Validate generated saves before reporting success.
 - Clearly show unknown item requirements instead of guessing.
@@ -61,7 +61,7 @@ D2 Assistant is a local desktop item bank and transfer helper for offline charac
 
 - Provide separate edit fields for carried gold (belt/inventory) and personal stash gold.
 - Enforce the classic LoD limits: carried gold is capped by character level and stash gold at 2,500,000.
-- Review the requested amounts and confirm before writing a validated `_d2a` copy; never change the selected original.
+- Review the requested amounts and confirm before writing the selected save in place; create a verified versioned backup first.
 
 ## Next version — skill trees and attributes
 
@@ -71,7 +71,7 @@ D2 Assistant is a local desktop item bank and transfer helper for offline charac
 - Let a player allocate attributes only from the character's existing unspent stat points. Never grant points beyond what the character has earned.
 - Allow attribute respecs by returning already allocated points to the pool, then reassigning those same points while preserving the earned total.
 - Treat skill-tree and attribute editing as an experimental, opt-in feature set until validated against supported offline save versions.
-- On every apply/reset operation, preserve the original, create a verified backup of an existing `_d2a` output before replacing it, write only a `_d2a` copy, and validate checksum and parsed values before reporting success.
+- On every apply/reset operation, create a verified versioned backup of the selected save, write that save in place, and validate checksum and parsed values before reporting success.
 - Show a review of all proposed point changes before writing. Require explicit confirmation for a full reset.
 - Keep original Diablo II + LoD as the supported baseline. Any D2R save support must be a separately versioned, opt-in capability with its own validation.
 

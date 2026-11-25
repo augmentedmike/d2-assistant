@@ -21,7 +21,7 @@ This is the public project task list. Completed work is recorded in `CHANGELOG.m
 - [ ] Allow attribute allocation only from unspent earned stat points; permit respec/reallocation of already spent points without increasing the earned total.
 - [x] Add separate carried (belt/inventory) and stash gold fields with save-format limits and a review before writing.
 - [ ] Gate the editor behind a local experimental feature flag; show a review and require confirmation before any write.
-- [ ] Write only validated `_d2a` copies and back up prior outputs; never modify originals.
+- [x] Back up and validate the selected save before gold edits and bank transfers; update the chosen character in place to avoid duplicate character files.
 - [x] Add automatic, versioned character-save backups behind a local setting that defaults on.
 - [x] Detect changed saves by SHA-256 on app start, folder refresh, and background checks while the app is open; establish an initial baseline without creating a version and save one verified snapshot only after file contents change.
 - [x] Add character backup history with timestamps and verification status; show the newest five by default with an option to expand.
@@ -37,5 +37,5 @@ This is the public project task list. Completed work is recorded in `CHANGELOG.m
 
 - D2R recipe reference entries do not imply D2R save support.
 - No online character, Battle.net, or in-game automation support is planned.
-- Keep original saves protected and preserve the `_d2a` export rule.
+- Never create an extra character file during a character edit or item transfer. Keep a verified recoverable backup before changing the selected save.
 - Never claim offline item transfers are dupe-proof.

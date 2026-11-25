@@ -406,26 +406,13 @@ fn edit_character_gold(
     if !selected_path.is_file() {
         return Err("selected character save does not exist".into());
     }
-    let selected_stem = selected_path
-        .file_stem()
-        .and_then(|name| name.to_str())
-        .ok_or("invalid character filename")?;
-    let selected_is_app_copy = selected_stem.ends_with("_d2a");
-    let output_path = if selected_is_app_copy {
-        selected_path.clone()
-    } else {
-        selected_path
-            .parent()
-            .ok_or("character path has no parent directory")?
-            .join(format!("{selected_stem}_d2a.d2s"))
-    };
-    let base_path = if output_path.is_file() {
-        &output_path
-    } else {
-        &selected_path
-    };
-    let base_bytes = fs::read(base_path)
-        .map_err(|e| format!("could not read character save {}: {e}", base_path.display()))?;
+    let output_path = selected_path.clone();
+    let base_bytes = fs::read(&selected_path).map_err(|e| {
+        format!(
+            "could not read character save {}: {e}",
+            selected_path.display()
+        )
+    })?;
     let mut save = D2Save::from_bytes(&base_bytes)
         .map_err(|e| format!("could not decode character save: {e}"))?;
     if save.version != 96 {
@@ -466,9 +453,7 @@ fn edit_character_gold(
         return Err("edited save failed gold value verification".into());
     }
 
-    if output_path.is_file() {
-        capture_character_backup(&app, &output_path, true)?;
-    }
+    capture_character_backup(&app, &output_path, true)?;
     let timestamp = now_secs()?;
     let temp_path = unique_sidecar_path(&output_path, "gold-tmp", timestamp);
     let displaced_path = unique_sidecar_path(&output_path, "gold-previous", timestamp);
@@ -483,7 +468,7 @@ fn edit_character_gold(
             let _ = fs::rename(&displaced_path, &output_path);
         }
         let _ = fs::remove_file(&temp_path);
-        return Err(format!("could not save edited character copy: {error}"));
+        return Err(format!("could not save edited character file: {error}"));
     }
     let written =
         fs::read(&output_path).map_err(|e| format!("edited save could not be reread: {e}"))?;
@@ -497,7 +482,9 @@ fn edit_character_gold(
         if displaced_path.exists() {
             let _ = fs::rename(&displaced_path, &output_path);
         }
-        return Err("written save failed verification; previous app copy was restored".into());
+        return Err(
+            "written save failed verification; previous character file was restored".into(),
+        );
     }
     if displaced_path.exists() {
         fs::remove_file(&displaced_path)
@@ -999,27 +986,13 @@ fn bank_export_items(
         8
     };
     let source_path = PathBuf::from(&character_path);
-    let parent = source_path
-        .parent()
-        .ok_or("character path has no parent directory")?;
-    let stem = source_path
-        .file_stem()
-        .and_then(|name| name.to_str())
-        .ok_or("invalid character filename")?;
-    let output_stem = stem.strip_suffix("_d2a").unwrap_or(stem);
-    let output_path = parent.join(format!("{output_stem}_d2a.d2s"));
-    if output_path == source_path {
-        return Err("refusing to replace the selected character save".into());
-    }
-
-    // Continue from an existing app copy so later exports preserve earlier ones.
-    let base_path = if output_path.is_file() {
-        &output_path
-    } else {
-        &source_path
-    };
-    let base_bytes = fs::read(base_path)
-        .map_err(|e| format!("could not read character save {}: {e}", base_path.display()))?;
+    let output_path = source_path.clone();
+    let base_bytes = fs::read(&source_path).map_err(|e| {
+        format!(
+            "could not read character save {}: {e}",
+            source_path.display()
+        )
+    })?;
     let mut save = D2Save::from_bytes(&base_bytes)
         .map_err(|e| format!("could not decode character save: {e}"))?;
     let txt = TxtData::embedded();
@@ -1044,13 +1017,10 @@ fn bank_export_items(
     }
 
     let conn = open_app_db(&app)?;
-    let tx = conn
-        .unchecked_transaction()
-        .map_err(|e| format!("could not start item transfer: {e}"))?;
     let mut added_seeds = std::collections::HashSet::new();
     let mut transferred = Vec::with_capacity(item_ids.len());
     for id in &item_ids {
-        let (item_data, transferred_to): (Option<Vec<u8>>, Option<String>) = tx
+        let (item_data, transferred_to): (Option<Vec<u8>>, Option<String>) = conn
             .query_row(
                 "SELECT item_data, transferred_to FROM bank_items WHERE id = ?1",
                 [id],
@@ -1111,18 +1081,8 @@ fn bank_export_items(
         return Err("updated save failed item-count verification".into());
     }
 
+    capture_character_backup(&app, &output_path, true)?;
     let now = now_secs()?;
-    if output_path.exists() {
-        let backup_path = unique_sidecar_path(&output_path, "bak", now);
-        fs::copy(&output_path, &backup_path)
-            .map_err(|e| format!("could not back up existing app save: {e}"))?;
-        if fs::read(&backup_path).ok() != fs::read(&output_path).ok() {
-            return Err(format!(
-                "app save backup verification failed: {}",
-                backup_path.display()
-            ));
-        }
-    }
     let temp_path = unique_sidecar_path(&output_path, "tmp", now);
     fs::write(&temp_path, &output_bytes)
         .map_err(|e| format!("could not write updated save: {e}"))?;
@@ -1132,7 +1092,12 @@ fn bank_export_items(
     }
     fs::rename(&temp_path, &output_path)
         .map_err(|e| format!("could not finalize updated save: {e}"))?;
+    update_character_save_state(&app, &output_path, &output_bytes)?;
 
+    let now = now_secs()?;
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|e| format!("save updated but could not record item transfer: {e}"))?;
     for id in transferred {
         tx.execute(
             "UPDATE bank_items SET transferred_to = ?1, updated_at = ?2 WHERE id = ?3 AND transferred_to IS NULL",

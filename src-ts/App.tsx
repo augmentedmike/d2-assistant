@@ -106,6 +106,7 @@ export default function App() {
   const [showAllCharacterBackups, setShowAllCharacterBackups] = useState(false)
   const [carriedGoldDraft, setCarriedGoldDraft] = useState('')
   const [stashGoldDraft, setStashGoldDraft] = useState('')
+  const [editingGold, setEditingGold] = useState<'carried' | 'stash' | null>(null)
   const [bankItems, setBankItems] = useState<BankItem[]>([])
   const [selectedBankIds, setSelectedBankIds] = useState<Set<number>>(new Set())
   const [transferCharacterPath, setTransferCharacterPath] = useState('')
@@ -250,10 +251,10 @@ export default function App() {
     }
   }
 
-  const handleSaveGold = async () => {
+  const handleSaveGold = async (carriedDraft = carriedGoldDraft, stashDraft = stashGoldDraft) => {
     if (!selected || !characterData) return
-    const carriedGold = Number(carriedGoldDraft)
-    const stashGold = Number(stashGoldDraft)
+    const carriedGold = Number(carriedDraft)
+    const stashGold = Number(stashDraft)
     const carriedGoldLimit = characterData.level * 10_000
     if (!Number.isInteger(carriedGold) || carriedGold < 0 || carriedGold > carriedGoldLimit) {
       setError(`Carried gold must be a whole number from 0 to ${carriedGoldLimit.toLocaleString()} at level ${characterData.level}.`)
@@ -264,10 +265,8 @@ export default function App() {
       return
     }
     if (carriedGold === characterData.gold && stashGold === characterData.stash_gold) return
-    const targetIsAppCopy = selected.path.replaceAll('\\', '/').split('/').pop()?.replace(/\.d2s$/i, '').endsWith('_d2a')
-    const destinationLabel = targetIsAppCopy ? selected.path : selected.path.replace(/\.d2s$/i, '_d2a.d2s')
     const confirmed = window.confirm(
-      `Apply these gold values to ${destinationLabel}?\n\nCarried: ${characterData.gold.toLocaleString()} → ${carriedGold.toLocaleString()}\nStash: ${characterData.stash_gold.toLocaleString()} → ${stashGold.toLocaleString()}\n\nThe original save is preserved. An existing D2 Assistant copy is backed up first.`,
+      `Update gold in ${selected.path}?\n\nCarried: ${characterData.gold.toLocaleString()} → ${carriedGold.toLocaleString()}\nStash: ${characterData.stash_gold.toLocaleString()} → ${stashGold.toLocaleString()}\n\nA verified versioned backup is saved first.`,
     )
     if (!confirmed) return
     setLoading(true)
@@ -283,7 +282,8 @@ export default function App() {
       } else {
         await handleSelect(selected)
       }
-      setNotice(`Saved gold changes to ${outputPath}. The original character save was left untouched.`)
+      setEditingGold(null)
+      setNotice(`Saved gold changes to ${outputPath}. A verified versioned backup was created first.`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -630,42 +630,58 @@ export default function App() {
                       </div>
                     </div>
 
-                    <section className="md:col-span-2 rounded-lg border border-amber-900/60 bg-neutral-900 p-4">
-                      <div className="mb-4">
-                        <h2 className="text-sm font-semibold uppercase tracking-wider text-amber-200">Edit gold</h2>
-                        <p className="mt-1 text-xs text-gray-400">Change carried gold and stash gold independently. Saving creates or updates a `_d2a` character copy; your selected original remains untouched.</p>
-                      </div>
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <label className="block">
-                          <span className="mb-1 block text-sm font-medium text-gray-200">Carried gold (belt/inventory)</span>
-                          <input
-                            aria-label="Carried gold in belt and inventory"
-                            type="number"
-                            min="0"
-                            max={characterData.level * 10_000}
-                            step="1"
-                            value={carriedGoldDraft}
-                            onChange={(event) => setCarriedGoldDraft(event.target.value)}
-                            disabled={loading || characterData.save_version !== 96 || !characterData.stats_validated}
-                            className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-lg text-white focus:border-red-700 focus:outline-none disabled:opacity-50"
-                          />
-                          <span className="mt-1 block text-xs text-gray-500">Current: {characterData.gold.toLocaleString()} · Maximum at level {characterData.level}: {(characterData.level * 10_000).toLocaleString()}</span>
-                        </label>
-                        <label className="block">
-                          <span className="mb-1 block text-sm font-medium text-gray-200">Personal stash gold</span>
-                          <input
-                            aria-label="Personal stash gold"
-                            type="number"
-                            min="0"
-                            max="2500000"
-                            step="1"
-                            value={stashGoldDraft}
-                            onChange={(event) => setStashGoldDraft(event.target.value)}
-                            disabled={loading || characterData.save_version !== 96 || !characterData.stats_validated}
-                            className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-lg text-white focus:border-red-700 focus:outline-none disabled:opacity-50"
-                          />
-                          <span className="mt-1 block text-xs text-gray-500">Current: {characterData.stash_gold.toLocaleString()} · Maximum: 2,500,000</span>
-                        </label>
+                    <section className="rounded-lg border border-amber-900/60 bg-neutral-900 p-4">
+                      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-amber-200">Gold</h2>
+                      <div className="space-y-4 text-sm">
+                        {([
+                          { key: 'carried', label: 'Belt / inventory', value: characterData.gold, limit: characterData.level * 10_000, draft: carriedGoldDraft, set: setCarriedGoldDraft },
+                          { key: 'stash', label: 'Stash', value: characterData.stash_gold, limit: 2_500_000, draft: stashGoldDraft, set: setStashGoldDraft },
+                        ] as const).map(({ key, label, value, limit, draft, set }) => (
+                          <div key={key}>
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-gray-400">{label}</span>
+                              {editingGold === key ? (
+                                <input
+                                  autoFocus
+                                  aria-label={`${label} gold`}
+                                  type="number"
+                                  min="0"
+                                  max={limit}
+                                  step="1"
+                                  value={draft}
+                                  onChange={(event) => {
+                                    const raw = event.target.value
+                                    const amount = Number(raw)
+                                    set(raw === '' ? '' : String(Math.min(limit, Math.max(0, Number.isFinite(amount) ? Math.floor(amount) : 0))))
+                                  }}
+                                  onBlur={() => void handleSaveGold(key === 'carried' ? draft : carriedGoldDraft, key === 'stash' ? draft : stashGoldDraft)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Enter') event.currentTarget.blur()
+                                    if (event.key === 'Escape') { set(key === 'carried' ? characterData.gold.toString() : characterData.stash_gold.toString()); setEditingGold(null) }
+                                  }}
+                                  disabled={loading || characterData.save_version !== 96 || !characterData.stats_validated}
+                                  className="w-36 rounded border border-amber-700 bg-neutral-950 px-2 py-1 text-right text-white focus:outline-none"
+                                />
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => { setCarriedGoldDraft(String(characterData.gold)); setStashGoldDraft(String(characterData.stash_gold)); setEditingGold(key) }}
+                                  disabled={loading || characterData.save_version !== 96 || !characterData.stats_validated}
+                                  className="font-semibold text-white underline decoration-dotted decoration-amber-600 underline-offset-4 hover:text-amber-200 disabled:opacity-50"
+                                >{value.toLocaleString()}</button>
+                              )}
+                            </div>
+                            <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
+                              <span>Max {limit.toLocaleString()}</span>
+                              <button type="button" className="text-amber-300 hover:text-amber-100 disabled:opacity-40" disabled={loading || value === limit || characterData.save_version !== 96 || !characterData.stats_validated} onClick={() => {
+                                const carried = key === 'carried' ? String(limit) : String(characterData.gold)
+                                const stash = key === 'stash' ? String(limit) : String(characterData.stash_gold)
+                                setCarriedGoldDraft(carried); setStashGoldDraft(stash)
+                                void handleSaveGold(carried, stash)
+                              }}>Max out</button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                       {characterData.save_version !== 96 && (
                         <p className="mt-3 rounded border border-amber-900/60 bg-amber-950/30 p-2 text-xs text-amber-200">Gold editing currently supports classic Lord of Destruction version 96 saves. This character is save version {characterData.save_version}.</p>
@@ -674,14 +690,7 @@ export default function App() {
                         <p className="mt-3 rounded border border-amber-900/60 bg-amber-950/30 p-2 text-xs text-amber-200">This character’s stat block could not be validated, so gold editing is disabled.</p>
                       )}
                       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-800 pt-4">
-                        <p className="text-xs text-gray-400">Save creates `{selected.path.split(/[\\/]/).pop()?.replace(/\.d2s$/i, '_d2a.d2s')}`. Existing app copies are backed up.</p>
-                        <button
-                          onClick={() => void handleSaveGold()}
-                          disabled={loading || !characterData.stats_validated || characterData.save_version !== 96 || (Number(carriedGoldDraft) === characterData.gold && Number(stashGoldDraft) === characterData.stash_gold)}
-                          className="rounded bg-red-800 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          {loading ? 'Saving…' : 'Review and save gold'}
-                        </button>
+                        <p className="text-xs text-gray-400">Click either gold amount to edit. Changes save when you press Enter or leave the field.</p>
                       </div>
                     </section>
 

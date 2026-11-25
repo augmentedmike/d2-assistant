@@ -12,7 +12,7 @@ D2 Assistant helps organize classic Diablo II items and move selected gear back 
 
 - **Local item bank:** import a supported version 96 `.d2x` stash, browse item cards, and search/filter by item type, rarity, requirements, sockets, and transfer status.
 - **Bulk selection:** refine results with multiple filters, select visible items, and keep selections while changing filters.
-- **Safer transfers:** prepare selected items for a chosen character's inventory or personal stash. The app writes `_d2a` save copies, keeps original character files untouched, backs up existing app copies, and validates the generated file.
+- **Safer transfers:** move selected items into a chosen character's inventory or personal stash. The app backs up the selected save, updates it in place, and validates the result so it does not create duplicate character files.
 - **Character overview:** read local character saves and compare known item class/level requirements with a transfer target.
 - **Runeword reference:** browse ordered runes, sockets, bases, and bonuses offline. Standard LoD recipes are shown by default; optional D2R/Reign references are clearly marked and can be hidden.
 
@@ -23,7 +23,7 @@ D2 Assistant helps organize classic Diablo II items and move selected gear back 
 ## Safety and known limits
 
 - Work on backups. Before importing a supported `.d2x`, the app creates and verifies a backup, moves the item records into its local bank, then empties the selected stash. Review the source path before confirming this operation.
-- Character exports create `_d2a` copies and never overwrite the original save. Check the output and open it in the game before relying on it.
+- Gold edits and item transfers update the selected character save in place after a verified backup. Confirm the selected character path before applying changes.
 - The current stash transfer path supports version 96 `.d2x` files. Other stash formats are rejected.
 - Item requirements added by some magical, set, unique, crafted, or runeword properties may be unknown. The app labels unknown requirements rather than guessing.
 - The bank uses item fingerprints to avoid accidental repeat exports inside the app. Offline saves have no authoritative server, so the app cannot prove ownership or prevent someone restoring an older backup.
@@ -45,7 +45,7 @@ If an installer is missing for your platform, that platform's release build has 
 2. On **Characters**, choose your Diablo II save folder with **Browse…**. The selection is saved locally on this computer.
 3. Open **Bank** and choose a `.d2x` file only when you intend to back it up, move all its items into the bank, and empty that stash file.
 4. Search and filter the bank, then select items and choose a character and destination.
-5. Check the generated `_d2a` save in game. Keep your original save and the verified stash backup.
+5. Check the updated character in game. The app keeps versioned character backups and a verified stash backup.
 
 ## Contributions
 
