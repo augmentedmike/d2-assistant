@@ -73,7 +73,7 @@ This project currently builds for macOS on the development machine. Windows and 
 
 ## Roadmap
 
-- **Next version:** add class skill trees and an opt-in character editor for skill allocation/reset, attribute allocation/reset, and character gold. Add default-on automatic versioned character-save backups with history and confirmed restore.
+- **Next version:** add class skill trees and an opt-in character editor for skill allocation/reset, attribute allocation/reset, and separate belt/inventory and stash gold editing. Add default-on automatic versioned character-save backups with history and confirmed restore.
 - Invite D2R contributors to bring current-version save-format knowledge and sanitized fixtures; explore local fingerprint analysis for duplicate screening without connecting to Battle.net.
 - Improve item-property and requirement decoding.
 - Add optional, user-controlled experimental features.

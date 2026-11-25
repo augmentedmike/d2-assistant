@@ -19,7 +19,7 @@ This is the public project task list. Completed work is recorded in `CHANGELOG.m
 - [ ] Add class skill trees with current allocations, prerequisites, and unspent points.
 - [ ] Allow skill allocation/editing and reset/reallocation with point-total validation.
 - [ ] Allow Strength, Dexterity, Vitality, and Energy allocation/reset while preserving earned totals.
-- [ ] Allow editing carried gold within the save format's legal limit.
+- [ ] Allow editing carried gold in the belt/inventory and stash gold independently, enforcing each save-format limit.
 - [ ] Gate the editor behind a local experimental feature flag; show a review and require confirmation before any write.
 - [ ] Write only validated `_d2a` copies and back up prior outputs; never modify originals.
 - [x] Add automatic, versioned character-save backups behind a local setting that defaults on.

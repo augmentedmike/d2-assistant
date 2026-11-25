@@ -63,7 +63,7 @@ D2 Assistant is a local desktop item bank and transfer helper for offline charac
 - Let a player allocate and edit skill points with prerequisite and point-total validation.
 - Let a player reset skill allocations and reassign earned skill points.
 - Let a player edit and reset Strength, Dexterity, Vitality, and Energy allocations while preserving the character's earned point total.
-- Let a player edit carried character gold within the save format's legal maximum.
+- Let a player edit carried (belt/inventory) gold and personal stash gold as separate values, each within its save-format legal maximum.
 - Treat this as an experimental, opt-in feature set until validated against supported offline save versions.
 - On every apply/reset operation, preserve the original, create a verified backup of an existing `_d2a` output before replacing it, write only a `_d2a` copy, and validate checksum and parsed values before reporting success.
 - Show a review of all proposed point and gold changes before writing. Require explicit confirmation for a full reset.
