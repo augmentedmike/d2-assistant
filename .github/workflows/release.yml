@@ -63,7 +63,7 @@ jobs:
             Keep independent backups. Stash import creates a verified backup and empties the selected stash; character exports create `_d2a` copies.
           releaseDraft: true
           prerelease: false
-          args: --bundles ${{ matrix.bundles }} ${{ matrix.rust-target != '' && format('--target {0}', matrix.rust-target) || '' }}
+          args: --config src-rs/tauri.conf.json --bundles ${{ matrix.bundles }} ${{ matrix.rust-target != '' && format('--target {0}', matrix.rust-target) || '' }}
 
   publish:
     needs: build
