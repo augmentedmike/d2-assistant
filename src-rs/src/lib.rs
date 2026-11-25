@@ -15,7 +15,7 @@ use d2x::{
     requirements_from_item_record,
 };
 use rusqlite::OptionalExtension;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -36,6 +36,53 @@ struct BankImportResult {
 enum ParseResult<T> {
     Ok(T),
     Err(String),
+}
+
+#[derive(Debug, Serialize)]
+struct CharacterBuildData {
+    class_code: String,
+    skill_levels: Vec<u8>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SkillCatalog {
+    #[serde(rename = "skillOffset")]
+    skill_offset: u16,
+    skills: Vec<SkillDefinition>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SkillDefinition {
+    id: u16,
+    name: String,
+    #[serde(rename = "requiredLevel")]
+    required_level: u8,
+    #[serde(rename = "maxLevel")]
+    max_level: u8,
+    prerequisites: Vec<usize>,
+}
+
+const CLASSIC_SKILL_CATALOG: &str = include_str!("../../src-ts/data/classic-skills-v96.json");
+
+fn class_code(class_id: u8) -> Option<&'static str> {
+    ["ama", "sor", "nec", "pal", "bar", "dru", "ass"]
+        .get(class_id as usize)
+        .copied()
+}
+
+fn base_attributes(class_id: u8) -> Option<[u16; 4]> {
+    // Stored order: strength, dexterity, vitality, energy.
+    [
+        [20, 25, 20, 15], // Amazon
+        [10, 25, 10, 35], // Sorceress
+        [15, 25, 15, 25], // Necromancer
+        [25, 20, 25, 15], // Paladin
+        [30, 20, 25, 10], // Barbarian
+        [15, 20, 25, 20], // Druid
+        [20, 20, 20, 25], // Assassin
+    ]
+    .get(class_id as usize)
+    .copied()
 }
 
 /// Lightweight character listing for the library view
@@ -392,6 +439,223 @@ fn character_restore_backup(
         "restored character save at {}",
         target_path.display()
     ))
+}
+
+#[command]
+fn character_build_data(character_path: String) -> Result<CharacterBuildData, String> {
+    let bytes =
+        fs::read(&character_path).map_err(|e| format!("could not read character save: {e}"))?;
+    let save =
+        D2Save::from_bytes(&bytes).map_err(|e| format!("could not decode character save: {e}"))?;
+    if save.version != 96 {
+        return Err(
+            "skill and attribute editing currently supports classic LoD version 96 saves".into(),
+        );
+    }
+    let class_id = save.character.class.to_raw();
+    let code = class_code(class_id).ok_or("this character class is not supported")?;
+    if save.skills.class.to_raw() != class_id || save.skills.levels.len() != 30 {
+        return Err(
+            "character skill section does not match its class or has an unsupported length".into(),
+        );
+    }
+    Ok(CharacterBuildData {
+        class_code: code.into(),
+        skill_levels: save.skills.levels,
+    })
+}
+
+#[command]
+fn edit_character_build(
+    app: tauri::AppHandle,
+    character_path: String,
+    attributes: [u16; 4],
+    skill_levels: Vec<u8>,
+) -> Result<String, String> {
+    const ATTRIBUTE_MAX: u16 = 1023;
+    let path = PathBuf::from(&character_path);
+    if !path.is_file() {
+        return Err("selected character save does not exist".into());
+    }
+    let original_bytes =
+        fs::read(&path).map_err(|e| format!("could not read character save: {e}"))?;
+    let mut save = D2Save::from_bytes(&original_bytes)
+        .map_err(|e| format!("could not decode character save: {e}"))?;
+    if save.version != 96 {
+        return Err(
+            "skill and attribute editing currently supports classic LoD version 96 saves".into(),
+        );
+    }
+    if skill_levels.len() != 30 || save.skills.levels.len() != 30 {
+        return Err("exactly 30 skill levels are required for this character class".into());
+    }
+    if attributes.iter().any(|value| *value > ATTRIBUTE_MAX) {
+        return Err(format!("attributes cannot exceed {ATTRIBUTE_MAX}"));
+    }
+
+    let class_id = save.character.class.to_raw();
+    let code = class_code(class_id).ok_or("this character class is not supported")?;
+    if save.skills.class.to_raw() != class_id {
+        return Err("character skill section does not match the character class".into());
+    }
+    let bases =
+        base_attributes(class_id).ok_or("base attributes are unavailable for this class")?;
+    let catalog: std::collections::HashMap<String, SkillCatalog> =
+        serde_json::from_str(CLASSIC_SKILL_CATALOG)
+            .map_err(|e| format!("built-in skill data is invalid: {e}"))?;
+    let class_skills = catalog
+        .get(code)
+        .ok_or("built-in skill data is missing this class")?;
+    if class_skills.skills.len() != 30 {
+        return Err("built-in skill data has an invalid number of class skills".into());
+    }
+
+    let stat_ids = [
+        StatId::STRENGTH,
+        StatId::DEXTERITY,
+        StatId::VITALITY,
+        StatId::ENERGY,
+    ];
+    let current_attributes: [u16; 4] =
+        stat_ids.map(|id| save.stats.get(id).clamp(0, u16::MAX as i64) as u16);
+    for index in 0..4 {
+        if current_attributes[index] < bases[index] || attributes[index] < bases[index] {
+            return Err("attributes cannot be reduced below this class's starting values".into());
+        }
+    }
+    let old_stat_points = save
+        .stats
+        .get(StatId::STAT_POINTS)
+        .clamp(0, u16::MAX as i64) as u16;
+    let earned_stat_budget = current_attributes
+        .iter()
+        .zip(bases)
+        .map(|(value, base)| value - base)
+        .sum::<u16>()
+        .checked_add(old_stat_points)
+        .ok_or("stat point total overflowed")?;
+    let new_spent_stats = attributes
+        .iter()
+        .zip(bases)
+        .map(|(value, base)| value - base)
+        .sum::<u16>();
+    let new_stat_points = earned_stat_budget
+        .checked_sub(new_spent_stats)
+        .ok_or("these attributes use more points than the character has earned")?;
+
+    let old_skill_points = save
+        .stats
+        .get(StatId::SKILL_POINTS)
+        .clamp(0, u16::MAX as i64) as u16;
+    let old_spent_skills = save
+        .skills
+        .levels
+        .iter()
+        .map(|level| *level as u16)
+        .sum::<u16>();
+    let earned_skill_budget = old_spent_skills
+        .checked_add(old_skill_points)
+        .ok_or("skill point total overflowed")?;
+    let new_spent_skills = skill_levels.iter().map(|level| *level as u16).sum::<u16>();
+    let new_skill_points = earned_skill_budget
+        .checked_sub(new_spent_skills)
+        .ok_or("these skills use more points than the character has earned")?;
+
+    for (index, (level, definition)) in skill_levels.iter().zip(&class_skills.skills).enumerate() {
+        if definition.id != class_skills.skill_offset + index as u16 {
+            return Err("built-in skill ids do not match the save skill layout".into());
+        }
+        if *level > definition.max_level {
+            return Err(format!(
+                "{} cannot exceed {} hard points",
+                definition.name, definition.max_level
+            ));
+        }
+        if *level > 0 {
+            if save.character.level < definition.required_level {
+                return Err(format!(
+                    "{} requires character level {}",
+                    definition.name, definition.required_level
+                ));
+            }
+            for prerequisite in &definition.prerequisites {
+                if skill_levels.get(*prerequisite).copied().unwrap_or(0) == 0 {
+                    return Err(format!(
+                        "{} requires at least one point in its prerequisite skills",
+                        definition.name
+                    ));
+                }
+            }
+        }
+    }
+
+    if current_attributes == attributes && save.skills.levels == skill_levels {
+        return Ok(path.to_string_lossy().into_owned());
+    }
+    for (id, value) in stat_ids.into_iter().zip(attributes) {
+        save.stats.set(id, value as i64);
+    }
+    save.stats.set(StatId::STAT_POINTS, new_stat_points as i64);
+    save.skills.levels.clone_from(&skill_levels);
+    save.stats
+        .set(StatId::SKILL_POINTS, new_skill_points as i64);
+
+    let updated_bytes = save
+        .to_bytes()
+        .map_err(|e| format!("could not encode updated character: {e}"))?;
+    let verified = D2Save::from_bytes(&updated_bytes)
+        .map_err(|e| format!("updated save failed validation: {e}"))?;
+    if verified.skills.levels != skill_levels
+        || verified.stats.get(StatId::STAT_POINTS) != new_stat_points as i64
+        || verified.stats.get(StatId::SKILL_POINTS) != new_skill_points as i64
+        || stat_ids
+            .iter()
+            .zip(attributes)
+            .any(|(id, value)| verified.stats.get(*id) != value as i64)
+    {
+        return Err("updated save failed attribute and skill verification".into());
+    }
+
+    capture_character_backup(&app, &path, true)?;
+    let timestamp = now_secs()?;
+    let temp_path = unique_sidecar_path(&path, "build-tmp", timestamp);
+    let displaced_path = unique_sidecar_path(&path, "build-previous", timestamp);
+    fs::write(&temp_path, &updated_bytes)
+        .map_err(|e| format!("could not prepare updated save: {e}"))?;
+    if fs::read(&temp_path).ok() != Some(updated_bytes.clone()) {
+        let _ = fs::remove_file(&temp_path);
+        return Err("updated character save failed byte verification".into());
+    }
+    fs::rename(&path, &displaced_path)
+        .map_err(|e| format!("could not preserve current character save: {e}"))?;
+    if let Err(error) = fs::rename(&temp_path, &path) {
+        let _ = fs::rename(&displaced_path, &path);
+        let _ = fs::remove_file(&temp_path);
+        return Err(format!("could not write updated character save: {error}"));
+    }
+    let written =
+        fs::read(&path).map_err(|e| format!("updated character save could not be reread: {e}"))?;
+    let final_save =
+        D2Save::from_bytes(&written).map_err(|e| format!("written save failed validation: {e}"))?;
+    let final_valid = written == updated_bytes
+        && final_save.skills.levels == skill_levels
+        && final_save.stats.get(StatId::STAT_POINTS) == new_stat_points as i64
+        && final_save.stats.get(StatId::SKILL_POINTS) == new_skill_points as i64
+        && stat_ids
+            .iter()
+            .zip(attributes)
+            .all(|(id, value)| final_save.stats.get(*id) == value as i64);
+    if !final_valid {
+        let _ = fs::remove_file(&path);
+        let _ = fs::rename(&displaced_path, &path);
+        return Err(
+            "written save failed verification; previous character file was restored".into(),
+        );
+    }
+    fs::remove_file(&displaced_path)
+        .map_err(|e| format!("save is valid, but temporary cleanup failed: {e}"))?;
+    update_character_save_state(&app, &path, &updated_bytes)?;
+    Ok(path.to_string_lossy().into_owned())
 }
 
 #[command]
@@ -1160,6 +1424,8 @@ pub fn run() {
             scan_characters,
             character_backup_history,
             character_restore_backup,
+            character_build_data,
+            edit_character_build,
             edit_character_gold,
             bank_add_item,
             bank_delete_item,

@@ -1,0 +1,2462 @@
+{
+  "ama": {
+    "name": "Amazon",
+    "skillOffset": 6,
+    "skills": [
+      {
+        "id": 6,
+        "name": "Magic Arrow",
+        "tree": 0,
+        "row": 0,
+        "column": 1,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 7,
+        "name": "Fire Arrow",
+        "tree": 0,
+        "row": 0,
+        "column": 2,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 8,
+        "name": "Inner Sight",
+        "tree": 1,
+        "row": 0,
+        "column": 0,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 9,
+        "name": "Critical Strike",
+        "tree": 1,
+        "row": 0,
+        "column": 2,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 10,
+        "name": "Jab",
+        "tree": 2,
+        "row": 0,
+        "column": 0,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 11,
+        "name": "Cold Arrow",
+        "tree": 0,
+        "row": 1,
+        "column": 0,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 12,
+        "name": "Multiple Shot",
+        "tree": 0,
+        "row": 1,
+        "column": 1,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": [
+          0
+        ]
+      },
+      {
+        "id": 13,
+        "name": "Dodge",
+        "tree": 1,
+        "row": 1,
+        "column": 1,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 14,
+        "name": "Power Strike",
+        "tree": 2,
+        "row": 1,
+        "column": 1,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": [
+          4
+        ]
+      },
+      {
+        "id": 15,
+        "name": "Poison Javelin",
+        "tree": 2,
+        "row": 1,
+        "column": 2,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 16,
+        "name": "Exploding Arrow",
+        "tree": 0,
+        "row": 2,
+        "column": 2,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          1,
+          6
+        ]
+      },
+      {
+        "id": 17,
+        "name": "Slow Missiles",
+        "tree": 1,
+        "row": 2,
+        "column": 0,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          2
+        ]
+      },
+      {
+        "id": 18,
+        "name": "Avoid",
+        "tree": 1,
+        "row": 2,
+        "column": 1,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          7
+        ]
+      },
+      {
+        "id": 19,
+        "name": "Impale",
+        "tree": 2,
+        "row": 2,
+        "column": 0,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          4
+        ]
+      },
+      {
+        "id": 20,
+        "name": "Lightning Bolt",
+        "tree": 2,
+        "row": 2,
+        "column": 2,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          9
+        ]
+      },
+      {
+        "id": 21,
+        "name": "Ice Arrow",
+        "tree": 0,
+        "row": 3,
+        "column": 0,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          5
+        ]
+      },
+      {
+        "id": 22,
+        "name": "Guided Arrow",
+        "tree": 0,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          5,
+          6
+        ]
+      },
+      {
+        "id": 23,
+        "name": "Penetrate",
+        "tree": 1,
+        "row": 3,
+        "column": 2,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          3
+        ]
+      },
+      {
+        "id": 24,
+        "name": "Charged Strike",
+        "tree": 2,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          8,
+          14
+        ]
+      },
+      {
+        "id": 25,
+        "name": "Plague Javelin",
+        "tree": 2,
+        "row": 3,
+        "column": 2,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          14
+        ]
+      },
+      {
+        "id": 26,
+        "name": "Strafe",
+        "tree": 0,
+        "row": 4,
+        "column": 1,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          16
+        ]
+      },
+      {
+        "id": 27,
+        "name": "Immolation Arrow",
+        "tree": 0,
+        "row": 4,
+        "column": 2,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          10
+        ]
+      },
+      {
+        "id": 28,
+        "name": "Decoy",
+        "tree": 1,
+        "row": 4,
+        "column": 0,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          11
+        ]
+      },
+      {
+        "id": 29,
+        "name": "Evade",
+        "tree": 1,
+        "row": 4,
+        "column": 1,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          12
+        ]
+      },
+      {
+        "id": 30,
+        "name": "Fend",
+        "tree": 2,
+        "row": 4,
+        "column": 0,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          13
+        ]
+      },
+      {
+        "id": 31,
+        "name": "Freezing Arrow",
+        "tree": 0,
+        "row": 5,
+        "column": 0,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          15
+        ]
+      },
+      {
+        "id": 32,
+        "name": "Valkyrie",
+        "tree": 1,
+        "row": 5,
+        "column": 0,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          22,
+          23
+        ]
+      },
+      {
+        "id": 33,
+        "name": "Pierce",
+        "tree": 1,
+        "row": 5,
+        "column": 2,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          17
+        ]
+      },
+      {
+        "id": 34,
+        "name": "Lightning Strike",
+        "tree": 2,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          18
+        ]
+      },
+      {
+        "id": 35,
+        "name": "Lightning Fury",
+        "tree": 2,
+        "row": 5,
+        "column": 2,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          19
+        ]
+      }
+    ]
+  },
+  "sor": {
+    "name": "Sorceress",
+    "skillOffset": 36,
+    "skills": [
+      {
+        "id": 36,
+        "name": "Fire Bolt",
+        "tree": 0,
+        "row": 0,
+        "column": 1,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 37,
+        "name": "Warmth",
+        "tree": 0,
+        "row": 0,
+        "column": 2,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 38,
+        "name": "Charged Bolt",
+        "tree": 1,
+        "row": 0,
+        "column": 1,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 39,
+        "name": "Ice Bolt",
+        "tree": 2,
+        "row": 0,
+        "column": 1,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 40,
+        "name": "Frozen Armor",
+        "tree": 2,
+        "row": 0,
+        "column": 2,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 41,
+        "name": "Inferno",
+        "tree": 0,
+        "row": 1,
+        "column": 0,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 42,
+        "name": "Static Field",
+        "tree": 1,
+        "row": 1,
+        "column": 0,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 43,
+        "name": "Telekinesis",
+        "tree": 1,
+        "row": 1,
+        "column": 2,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 44,
+        "name": "Frost Nova",
+        "tree": 2,
+        "row": 1,
+        "column": 0,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 45,
+        "name": "Ice Blast",
+        "tree": 2,
+        "row": 1,
+        "column": 1,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": [
+          3
+        ]
+      },
+      {
+        "id": 46,
+        "name": "Blaze",
+        "tree": 0,
+        "row": 2,
+        "column": 0,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          5
+        ]
+      },
+      {
+        "id": 47,
+        "name": "Fire Ball",
+        "tree": 0,
+        "row": 2,
+        "column": 1,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          0
+        ]
+      },
+      {
+        "id": 48,
+        "name": "Nova",
+        "tree": 1,
+        "row": 2,
+        "column": 0,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          6
+        ]
+      },
+      {
+        "id": 49,
+        "name": "Lightning",
+        "tree": 1,
+        "row": 2,
+        "column": 1,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          2
+        ]
+      },
+      {
+        "id": 50,
+        "name": "Shiver Armor",
+        "tree": 2,
+        "row": 2,
+        "column": 2,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          9,
+          4
+        ]
+      },
+      {
+        "id": 51,
+        "name": "Fire Wall",
+        "tree": 0,
+        "row": 3,
+        "column": 0,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          10
+        ]
+      },
+      {
+        "id": 52,
+        "name": "Enchant",
+        "tree": 0,
+        "row": 3,
+        "column": 2,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          1,
+          11
+        ]
+      },
+      {
+        "id": 53,
+        "name": "Chain Lightning",
+        "tree": 1,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          13
+        ]
+      },
+      {
+        "id": 54,
+        "name": "Teleport",
+        "tree": 1,
+        "row": 3,
+        "column": 2,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          7
+        ]
+      },
+      {
+        "id": 55,
+        "name": "Glacial Spike",
+        "tree": 2,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          9
+        ]
+      },
+      {
+        "id": 56,
+        "name": "Meteor",
+        "tree": 0,
+        "row": 4,
+        "column": 1,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          11,
+          15
+        ]
+      },
+      {
+        "id": 57,
+        "name": "Thunder Storm",
+        "tree": 1,
+        "row": 4,
+        "column": 0,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          12,
+          17
+        ]
+      },
+      {
+        "id": 58,
+        "name": "Energy Shield",
+        "tree": 1,
+        "row": 4,
+        "column": 2,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          18,
+          17
+        ]
+      },
+      {
+        "id": 59,
+        "name": "Blizzard",
+        "tree": 2,
+        "row": 4,
+        "column": 0,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          8,
+          19
+        ]
+      },
+      {
+        "id": 60,
+        "name": "Chilling Armor",
+        "tree": 2,
+        "row": 4,
+        "column": 2,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          14
+        ]
+      },
+      {
+        "id": 61,
+        "name": "Fire Mastery",
+        "tree": 0,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 62,
+        "name": "Hydra",
+        "tree": 0,
+        "row": 5,
+        "column": 2,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          16
+        ]
+      },
+      {
+        "id": 63,
+        "name": "Lightning Mastery",
+        "tree": 1,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 64,
+        "name": "Frozen Orb",
+        "tree": 2,
+        "row": 5,
+        "column": 0,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          23
+        ]
+      },
+      {
+        "id": 65,
+        "name": "Cold Mastery",
+        "tree": 2,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": []
+      }
+    ]
+  },
+  "nec": {
+    "name": "Necromancer",
+    "skillOffset": 66,
+    "skills": [
+      {
+        "id": 66,
+        "name": "Amplify Damage",
+        "tree": 0,
+        "row": 0,
+        "column": 1,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 67,
+        "name": "Teeth",
+        "tree": 1,
+        "row": 0,
+        "column": 1,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 68,
+        "name": "Bone Armor",
+        "tree": 1,
+        "row": 0,
+        "column": 2,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 69,
+        "name": "Skeleton Mastery",
+        "tree": 2,
+        "row": 0,
+        "column": 0,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": [
+          4
+        ]
+      },
+      {
+        "id": 70,
+        "name": "Raise Skeleton",
+        "tree": 2,
+        "row": 0,
+        "column": 2,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 71,
+        "name": "Dim Vision",
+        "tree": 0,
+        "row": 1,
+        "column": 0,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 72,
+        "name": "Weaken",
+        "tree": 0,
+        "row": 1,
+        "column": 2,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": [
+          0
+        ]
+      },
+      {
+        "id": 73,
+        "name": "Poison Dagger",
+        "tree": 1,
+        "row": 1,
+        "column": 0,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 74,
+        "name": "Corpse Explosion",
+        "tree": 1,
+        "row": 1,
+        "column": 1,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": [
+          1
+        ]
+      },
+      {
+        "id": 75,
+        "name": "Clay Golem",
+        "tree": 2,
+        "row": 1,
+        "column": 1,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 76,
+        "name": "Iron Maiden",
+        "tree": 0,
+        "row": 2,
+        "column": 1,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          0
+        ]
+      },
+      {
+        "id": 77,
+        "name": "Terror",
+        "tree": 0,
+        "row": 2,
+        "column": 2,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          6
+        ]
+      },
+      {
+        "id": 78,
+        "name": "Bone Wall",
+        "tree": 1,
+        "row": 2,
+        "column": 2,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          2
+        ]
+      },
+      {
+        "id": 79,
+        "name": "Golem Mastery",
+        "tree": 2,
+        "row": 2,
+        "column": 0,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          9
+        ]
+      },
+      {
+        "id": 80,
+        "name": "Raise Skeletal Mage",
+        "tree": 2,
+        "row": 2,
+        "column": 2,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          4
+        ]
+      },
+      {
+        "id": 81,
+        "name": "Confuse",
+        "tree": 0,
+        "row": 3,
+        "column": 0,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          5
+        ]
+      },
+      {
+        "id": 82,
+        "name": "Life Tap",
+        "tree": 0,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          10
+        ]
+      },
+      {
+        "id": 83,
+        "name": "Poison Explosion",
+        "tree": 1,
+        "row": 3,
+        "column": 0,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          7,
+          8
+        ]
+      },
+      {
+        "id": 84,
+        "name": "Bone Spear",
+        "tree": 1,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          8
+        ]
+      },
+      {
+        "id": 85,
+        "name": "Blood Golem",
+        "tree": 2,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          9
+        ]
+      },
+      {
+        "id": 86,
+        "name": "Attract",
+        "tree": 0,
+        "row": 4,
+        "column": 0,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          15
+        ]
+      },
+      {
+        "id": 87,
+        "name": "Decrepify",
+        "tree": 0,
+        "row": 4,
+        "column": 2,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          11
+        ]
+      },
+      {
+        "id": 88,
+        "name": "Bone Prison",
+        "tree": 1,
+        "row": 4,
+        "column": 2,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          12,
+          18
+        ]
+      },
+      {
+        "id": 89,
+        "name": "Summon Resist",
+        "tree": 2,
+        "row": 4,
+        "column": 0,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          13
+        ]
+      },
+      {
+        "id": 90,
+        "name": "Iron Golem",
+        "tree": 2,
+        "row": 4,
+        "column": 1,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          19
+        ]
+      },
+      {
+        "id": 91,
+        "name": "Lower Resist",
+        "tree": 0,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          16,
+          21
+        ]
+      },
+      {
+        "id": 92,
+        "name": "Poison Nova",
+        "tree": 1,
+        "row": 5,
+        "column": 0,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          17
+        ]
+      },
+      {
+        "id": 93,
+        "name": "Bone Spirit",
+        "tree": 1,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          18
+        ]
+      },
+      {
+        "id": 94,
+        "name": "Fire Golem",
+        "tree": 2,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          24
+        ]
+      },
+      {
+        "id": 95,
+        "name": "Revive",
+        "tree": 2,
+        "row": 5,
+        "column": 2,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          14,
+          24
+        ]
+      }
+    ]
+  },
+  "pal": {
+    "name": "Paladin",
+    "skillOffset": 96,
+    "skills": [
+      {
+        "id": 96,
+        "name": "Sacrifice",
+        "tree": 0,
+        "row": 0,
+        "column": 0,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 97,
+        "name": "Smite",
+        "tree": 0,
+        "row": 0,
+        "column": 2,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 98,
+        "name": "Might",
+        "tree": 1,
+        "row": 0,
+        "column": 0,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 99,
+        "name": "Prayer",
+        "tree": 2,
+        "row": 0,
+        "column": 0,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 100,
+        "name": "Resist Fire",
+        "tree": 2,
+        "row": 0,
+        "column": 2,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 101,
+        "name": "Holy Bolt",
+        "tree": 0,
+        "row": 1,
+        "column": 1,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 102,
+        "name": "Holy Fire",
+        "tree": 1,
+        "row": 1,
+        "column": 1,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": [
+          2
+        ]
+      },
+      {
+        "id": 103,
+        "name": "Thorns",
+        "tree": 1,
+        "row": 1,
+        "column": 2,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 104,
+        "name": "Defiance",
+        "tree": 2,
+        "row": 1,
+        "column": 1,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 105,
+        "name": "Resist Cold",
+        "tree": 2,
+        "row": 1,
+        "column": 2,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 106,
+        "name": "Zeal",
+        "tree": 0,
+        "row": 2,
+        "column": 0,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          0
+        ]
+      },
+      {
+        "id": 107,
+        "name": "Charge",
+        "tree": 0,
+        "row": 2,
+        "column": 2,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          1
+        ]
+      },
+      {
+        "id": 108,
+        "name": "Blessed Aim",
+        "tree": 1,
+        "row": 2,
+        "column": 0,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          2
+        ]
+      },
+      {
+        "id": 109,
+        "name": "Cleansing",
+        "tree": 2,
+        "row": 2,
+        "column": 0,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          3
+        ]
+      },
+      {
+        "id": 110,
+        "name": "Resist Lightning",
+        "tree": 2,
+        "row": 2,
+        "column": 2,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 111,
+        "name": "Vengeance",
+        "tree": 0,
+        "row": 3,
+        "column": 0,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          10
+        ]
+      },
+      {
+        "id": 112,
+        "name": "Blessed Hammer",
+        "tree": 0,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          5
+        ]
+      },
+      {
+        "id": 113,
+        "name": "Concentration",
+        "tree": 1,
+        "row": 3,
+        "column": 0,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          12
+        ]
+      },
+      {
+        "id": 114,
+        "name": "Holy Freeze",
+        "tree": 1,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          6
+        ]
+      },
+      {
+        "id": 115,
+        "name": "Vigor",
+        "tree": 2,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          13,
+          8
+        ]
+      },
+      {
+        "id": 116,
+        "name": "Conversion",
+        "tree": 0,
+        "row": 4,
+        "column": 0,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          15
+        ]
+      },
+      {
+        "id": 117,
+        "name": "Holy Shield",
+        "tree": 0,
+        "row": 4,
+        "column": 2,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          11,
+          16
+        ]
+      },
+      {
+        "id": 118,
+        "name": "Holy Shock",
+        "tree": 1,
+        "row": 4,
+        "column": 1,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          18
+        ]
+      },
+      {
+        "id": 119,
+        "name": "Sanctuary",
+        "tree": 1,
+        "row": 4,
+        "column": 2,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          7,
+          18
+        ]
+      },
+      {
+        "id": 120,
+        "name": "Meditation",
+        "tree": 2,
+        "row": 4,
+        "column": 0,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          13
+        ]
+      },
+      {
+        "id": 121,
+        "name": "Fist of the Heavens",
+        "tree": 0,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          16,
+          20
+        ]
+      },
+      {
+        "id": 122,
+        "name": "Fanaticism",
+        "tree": 1,
+        "row": 5,
+        "column": 0,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          17
+        ]
+      },
+      {
+        "id": 123,
+        "name": "Conviction",
+        "tree": 1,
+        "row": 5,
+        "column": 2,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          23
+        ]
+      },
+      {
+        "id": 124,
+        "name": "Redemption",
+        "tree": 2,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          19
+        ]
+      },
+      {
+        "id": 125,
+        "name": "Salvation",
+        "tree": 2,
+        "row": 5,
+        "column": 2,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": []
+      }
+    ]
+  },
+  "bar": {
+    "name": "Barbarian",
+    "skillOffset": 126,
+    "skills": [
+      {
+        "id": 126,
+        "name": "Bash",
+        "tree": 0,
+        "row": 0,
+        "column": 1,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 127,
+        "name": "Sword Mastery",
+        "tree": 1,
+        "row": 0,
+        "column": 0,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 128,
+        "name": "Axe Mastery",
+        "tree": 1,
+        "row": 0,
+        "column": 1,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 129,
+        "name": "Mace Mastery",
+        "tree": 1,
+        "row": 0,
+        "column": 2,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 130,
+        "name": "Howl",
+        "tree": 2,
+        "row": 0,
+        "column": 0,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 131,
+        "name": "Find Potion",
+        "tree": 2,
+        "row": 0,
+        "column": 2,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 132,
+        "name": "Leap",
+        "tree": 0,
+        "row": 1,
+        "column": 0,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 133,
+        "name": "Double Swing",
+        "tree": 0,
+        "row": 1,
+        "column": 2,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": [
+          0
+        ]
+      },
+      {
+        "id": 134,
+        "name": "Polearm Mastery",
+        "tree": 1,
+        "row": 1,
+        "column": 0,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 135,
+        "name": "Throwing Mastery",
+        "tree": 1,
+        "row": 1,
+        "column": 1,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 136,
+        "name": "Spear Mastery",
+        "tree": 1,
+        "row": 1,
+        "column": 2,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 137,
+        "name": "Taunt",
+        "tree": 2,
+        "row": 1,
+        "column": 0,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": [
+          4
+        ]
+      },
+      {
+        "id": 138,
+        "name": "Shout",
+        "tree": 2,
+        "row": 1,
+        "column": 1,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": [
+          4
+        ]
+      },
+      {
+        "id": 139,
+        "name": "Stun",
+        "tree": 0,
+        "row": 2,
+        "column": 1,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          0
+        ]
+      },
+      {
+        "id": 140,
+        "name": "Double Throw",
+        "tree": 0,
+        "row": 2,
+        "column": 2,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          7
+        ]
+      },
+      {
+        "id": 141,
+        "name": "Increased Stamina",
+        "tree": 1,
+        "row": 2,
+        "column": 0,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 142,
+        "name": "Find Item",
+        "tree": 2,
+        "row": 2,
+        "column": 2,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          5
+        ]
+      },
+      {
+        "id": 143,
+        "name": "Leap Attack",
+        "tree": 0,
+        "row": 3,
+        "column": 0,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          6
+        ]
+      },
+      {
+        "id": 144,
+        "name": "Concentrate",
+        "tree": 0,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          13
+        ]
+      },
+      {
+        "id": 145,
+        "name": "Iron Skin",
+        "tree": 1,
+        "row": 3,
+        "column": 2,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 146,
+        "name": "Battle Cry",
+        "tree": 2,
+        "row": 3,
+        "column": 0,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          11
+        ]
+      },
+      {
+        "id": 147,
+        "name": "Frenzy",
+        "tree": 0,
+        "row": 4,
+        "column": 2,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          14
+        ]
+      },
+      {
+        "id": 148,
+        "name": "Increased Speed",
+        "tree": 1,
+        "row": 4,
+        "column": 0,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          15
+        ]
+      },
+      {
+        "id": 149,
+        "name": "Battle Orders",
+        "tree": 2,
+        "row": 4,
+        "column": 1,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          12
+        ]
+      },
+      {
+        "id": 150,
+        "name": "Grim Ward",
+        "tree": 2,
+        "row": 4,
+        "column": 2,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          16
+        ]
+      },
+      {
+        "id": 151,
+        "name": "Whirlwind",
+        "tree": 0,
+        "row": 5,
+        "column": 0,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          17,
+          18
+        ]
+      },
+      {
+        "id": 152,
+        "name": "Berserk",
+        "tree": 0,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          18
+        ]
+      },
+      {
+        "id": 153,
+        "name": "Natural Resistance",
+        "tree": 1,
+        "row": 5,
+        "column": 2,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          19
+        ]
+      },
+      {
+        "id": 154,
+        "name": "War Cry",
+        "tree": 2,
+        "row": 5,
+        "column": 0,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          20,
+          23
+        ]
+      },
+      {
+        "id": 155,
+        "name": "Battle Command",
+        "tree": 2,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          23
+        ]
+      }
+    ]
+  },
+  "dru": {
+    "name": "Druid",
+    "skillOffset": 221,
+    "skills": [
+      {
+        "id": 221,
+        "name": "Raven",
+        "tree": 0,
+        "row": 0,
+        "column": 1,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 222,
+        "name": "Poison Creeper",
+        "tree": 0,
+        "row": 0,
+        "column": 2,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 223,
+        "name": "Werewolf",
+        "tree": 1,
+        "row": 0,
+        "column": 0,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 224,
+        "name": "Shape Shifting",
+        "tree": 1,
+        "row": 0,
+        "column": 1,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": [
+          2
+        ]
+      },
+      {
+        "id": 225,
+        "name": "Firestorm",
+        "tree": 2,
+        "row": 0,
+        "column": 0,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 226,
+        "name": "Oak Sage",
+        "tree": 0,
+        "row": 1,
+        "column": 0,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 227,
+        "name": "Summon Spirit Wolf",
+        "tree": 0,
+        "row": 1,
+        "column": 1,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": [
+          0
+        ]
+      },
+      {
+        "id": 228,
+        "name": "Werebear",
+        "tree": 1,
+        "row": 1,
+        "column": 2,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 229,
+        "name": "Molten Boulder",
+        "tree": 2,
+        "row": 1,
+        "column": 0,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": [
+          4
+        ]
+      },
+      {
+        "id": 230,
+        "name": "Arctic Blast",
+        "tree": 2,
+        "row": 1,
+        "column": 2,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 231,
+        "name": "Carrion Vine",
+        "tree": 0,
+        "row": 2,
+        "column": 2,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          1
+        ]
+      },
+      {
+        "id": 232,
+        "name": "Feral Rage",
+        "tree": 1,
+        "row": 2,
+        "column": 0,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          2
+        ]
+      },
+      {
+        "id": 233,
+        "name": "Maul",
+        "tree": 1,
+        "row": 2,
+        "column": 2,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          7
+        ]
+      },
+      {
+        "id": 234,
+        "name": "Eruption",
+        "tree": 2,
+        "row": 2,
+        "column": 0,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          8
+        ]
+      },
+      {
+        "id": 235,
+        "name": "Cyclone Armor",
+        "tree": 2,
+        "row": 2,
+        "column": 2,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          9
+        ]
+      },
+      {
+        "id": 236,
+        "name": "Heart of Wolverine",
+        "tree": 0,
+        "row": 3,
+        "column": 0,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          5
+        ]
+      },
+      {
+        "id": 237,
+        "name": "Summon Dire Wolf",
+        "tree": 0,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          5,
+          6
+        ]
+      },
+      {
+        "id": 238,
+        "name": "Rabies",
+        "tree": 1,
+        "row": 3,
+        "column": 0,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          11
+        ]
+      },
+      {
+        "id": 239,
+        "name": "Fire Claws",
+        "tree": 1,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          11,
+          12
+        ]
+      },
+      {
+        "id": 240,
+        "name": "Twister",
+        "tree": 2,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          14
+        ]
+      },
+      {
+        "id": 241,
+        "name": "Solar Creeper",
+        "tree": 0,
+        "row": 4,
+        "column": 2,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          10
+        ]
+      },
+      {
+        "id": 242,
+        "name": "Hunger",
+        "tree": 1,
+        "row": 4,
+        "column": 1,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          18
+        ]
+      },
+      {
+        "id": 243,
+        "name": "Shock Wave",
+        "tree": 1,
+        "row": 4,
+        "column": 2,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          12
+        ]
+      },
+      {
+        "id": 244,
+        "name": "Volcano",
+        "tree": 2,
+        "row": 4,
+        "column": 0,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          13
+        ]
+      },
+      {
+        "id": 245,
+        "name": "Tornado",
+        "tree": 2,
+        "row": 4,
+        "column": 1,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          19
+        ]
+      },
+      {
+        "id": 246,
+        "name": "Spirit of Barbs",
+        "tree": 0,
+        "row": 5,
+        "column": 0,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          15
+        ]
+      },
+      {
+        "id": 247,
+        "name": "Summon Grizzly",
+        "tree": 0,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          16
+        ]
+      },
+      {
+        "id": 248,
+        "name": "Fury",
+        "tree": 1,
+        "row": 5,
+        "column": 0,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          17
+        ]
+      },
+      {
+        "id": 249,
+        "name": "Armageddon",
+        "tree": 2,
+        "row": 5,
+        "column": 0,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          23,
+          29
+        ]
+      },
+      {
+        "id": 250,
+        "name": "Hurricane",
+        "tree": 2,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          24
+        ]
+      }
+    ]
+  },
+  "ass": {
+    "name": "Assassin",
+    "skillOffset": 251,
+    "skills": [
+      {
+        "id": 251,
+        "name": "Fire Blast",
+        "tree": 0,
+        "row": 0,
+        "column": 1,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 252,
+        "name": "Claw Mastery",
+        "tree": 1,
+        "row": 0,
+        "column": 1,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 253,
+        "name": "Psychic Hammer",
+        "tree": 1,
+        "row": 0,
+        "column": 2,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 254,
+        "name": "Tiger Strike",
+        "tree": 2,
+        "row": 0,
+        "column": 1,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 255,
+        "name": "Dragon Talon",
+        "tree": 2,
+        "row": 0,
+        "column": 2,
+        "requiredLevel": 1,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 256,
+        "name": "Shock Web",
+        "tree": 0,
+        "row": 1,
+        "column": 0,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": [
+          0
+        ]
+      },
+      {
+        "id": 257,
+        "name": "Blade Sentinel",
+        "tree": 0,
+        "row": 1,
+        "column": 2,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 258,
+        "name": "Burst of Speed",
+        "tree": 1,
+        "row": 1,
+        "column": 0,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": [
+          1
+        ]
+      },
+      {
+        "id": 259,
+        "name": "Fists of Fire",
+        "tree": 2,
+        "row": 1,
+        "column": 0,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": []
+      },
+      {
+        "id": 260,
+        "name": "Dragon Claw",
+        "tree": 2,
+        "row": 1,
+        "column": 2,
+        "requiredLevel": 6,
+        "maxLevel": 20,
+        "prerequisites": [
+          4
+        ]
+      },
+      {
+        "id": 261,
+        "name": "Charged Bolt Sentry",
+        "tree": 0,
+        "row": 2,
+        "column": 0,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          5
+        ]
+      },
+      {
+        "id": 262,
+        "name": "Wake of Fire",
+        "tree": 0,
+        "row": 2,
+        "column": 1,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          0
+        ]
+      },
+      {
+        "id": 263,
+        "name": "Weapon Block",
+        "tree": 1,
+        "row": 2,
+        "column": 1,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          1
+        ]
+      },
+      {
+        "id": 264,
+        "name": "Cloak of Shadows",
+        "tree": 1,
+        "row": 2,
+        "column": 2,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          2
+        ]
+      },
+      {
+        "id": 265,
+        "name": "Cobra Strike",
+        "tree": 2,
+        "row": 2,
+        "column": 1,
+        "requiredLevel": 12,
+        "maxLevel": 20,
+        "prerequisites": [
+          3
+        ]
+      },
+      {
+        "id": 266,
+        "name": "Blade Fury",
+        "tree": 0,
+        "row": 3,
+        "column": 2,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          6,
+          11
+        ]
+      },
+      {
+        "id": 267,
+        "name": "Fade",
+        "tree": 1,
+        "row": 3,
+        "column": 0,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          7
+        ]
+      },
+      {
+        "id": 268,
+        "name": "Shadow Warrior",
+        "tree": 1,
+        "row": 3,
+        "column": 1,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          13,
+          12
+        ]
+      },
+      {
+        "id": 269,
+        "name": "Claws of Thunder",
+        "tree": 2,
+        "row": 3,
+        "column": 0,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          8
+        ]
+      },
+      {
+        "id": 270,
+        "name": "Dragon Tail",
+        "tree": 2,
+        "row": 3,
+        "column": 2,
+        "requiredLevel": 18,
+        "maxLevel": 20,
+        "prerequisites": [
+          9
+        ]
+      },
+      {
+        "id": 271,
+        "name": "Lightning Sentry",
+        "tree": 0,
+        "row": 4,
+        "column": 0,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          10
+        ]
+      },
+      {
+        "id": 272,
+        "name": "Wake of Inferno",
+        "tree": 0,
+        "row": 4,
+        "column": 1,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          11
+        ]
+      },
+      {
+        "id": 273,
+        "name": "Mind Blast",
+        "tree": 1,
+        "row": 4,
+        "column": 2,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          13
+        ]
+      },
+      {
+        "id": 274,
+        "name": "Blades of Ice",
+        "tree": 2,
+        "row": 4,
+        "column": 0,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          18
+        ]
+      },
+      {
+        "id": 275,
+        "name": "Dragon Flight",
+        "tree": 2,
+        "row": 4,
+        "column": 2,
+        "requiredLevel": 24,
+        "maxLevel": 20,
+        "prerequisites": [
+          19
+        ]
+      },
+      {
+        "id": 276,
+        "name": "Death Sentry",
+        "tree": 0,
+        "row": 5,
+        "column": 0,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          20
+        ]
+      },
+      {
+        "id": 277,
+        "name": "Blade Shield",
+        "tree": 0,
+        "row": 5,
+        "column": 2,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          15
+        ]
+      },
+      {
+        "id": 278,
+        "name": "Venom",
+        "tree": 1,
+        "row": 5,
+        "column": 0,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          16
+        ]
+      },
+      {
+        "id": 279,
+        "name": "Shadow Master",
+        "tree": 1,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          17
+        ]
+      },
+      {
+        "id": 280,
+        "name": "Phoenix Strike",
+        "tree": 2,
+        "row": 5,
+        "column": 1,
+        "requiredLevel": 30,
+        "maxLevel": 20,
+        "prerequisites": [
+          14,
+          23
+        ]
+      }
+    ]
+  }
+}

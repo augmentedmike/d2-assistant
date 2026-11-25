@@ -63,16 +63,18 @@ D2 Assistant is a local desktop item bank and transfer helper for offline charac
 - Enforce the classic LoD limits: carried gold is capped by character level and stash gold at 2,500,000.
 - Review the requested amounts and confirm before writing the selected save in place; create a verified versioned backup first.
 
-## Next version — skill trees and attributes
+## Current editor — skills and attributes
 
-- Add a skill-tree view for each classic Diablo II / LoD class, showing learned skills, levels, prerequisites, and unspent points.
-- Let a player allocate and edit skills only from the character's existing unspent skill points. Never grant points beyond what the character has earned.
-- Allow skill respecs by returning already allocated points to the pool, then reassigning those same points subject to prerequisites and total-point validation.
-- Let a player allocate attributes only from the character's existing unspent stat points. Never grant points beyond what the character has earned.
-- Allow attribute respecs by returning already allocated points to the pool, then reassigning those same points while preserving the earned total.
-- Treat skill-tree and attribute editing as an experimental, opt-in feature set until validated against supported offline save versions.
-- On every apply/reset operation, create a verified versioned backup of the selected save, write that save in place, and validate checksum and parsed values before reporting success.
-- Show a review of all proposed point changes before writing. Require explicit confirmation for a full reset.
+- Show the seven classic LoD skill trees with current hard-point levels, skill requirements, and prerequisites.
+- Let players edit and respec skill levels using only unspent plus already allocated skill points. Never increase the character's earned point total.
+- Let players edit and respec strength, dexterity, vitality, and energy using only unspent plus already allocated stat points, while preserving class starting values and the earned total.
+- Before a write, show the proposed allocations and unspent totals, require confirmation, create a verified versioned backup, update the selected save in place, and validate the result.
+- Restrict writes to validated classic LoD version 96 saves until other formats have fixtures and separate validation.
+- Register character editing as a local feature flag, enabled by default for this release and switchable off from Features.
+
+## Next version — character editing
+
+- Add saved build plans that compare skill/stat targets with the character's current allocations and the items/runes in the local bank.
 - Keep original Diablo II + LoD as the supported baseline. Any D2R save support must be a separately versioned, opt-in capability with its own validation.
 
 Community proposals may extend the supported game matrix. D2R work must use its own version-specific parser and fixtures. Battle.net duplicate analysis, if pursued, must remain a local utility unless a supported data source is established; it must not claim to authenticate ownership or prevent server-side duplication.

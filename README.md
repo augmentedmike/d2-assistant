@@ -14,11 +14,12 @@ D2 Assistant helps organize classic Diablo II items and move selected gear back 
 - **Bulk selection:** refine results with multiple filters, select visible items, and keep selections while changing filters.
 - **Safer transfers:** move selected items into a chosen character's inventory or personal stash. The app backs up the selected save, updates it in place, and validates the result so it does not create duplicate character files.
 - **Character overview:** read local character saves and compare known item class/level requirements with a transfer target.
+- **Character Lab:** view classic skill trees and reallocate skill and attribute points without increasing points the character has earned. Writes are backed up and limited to validated classic LoD version 96 saves.
 - **Runeword reference:** browse ordered runes, sockets, bases, and bonuses offline. Standard LoD recipes are shown by default; optional D2R/Reign references are clearly marked and can be hidden.
 
 ## Why I built this
 
-> I’ve been running Diablo II on Mac hardware through Wine for years. I tried ATMA, D2 Character Editor, GoMule, and browser tabs, but the workflows were frustrating and I kept needing separate tools for offline character and item management. I wanted one place to organize characters, transfer items in bulk, search and filter well, plan builds, and look up runeword recipes. I asked my agent, **helloam.bot**, to help build it. A few hours later, I had something much better for my workflow. Now I use D2 Assistant as a companion while I play offline and plan characters. The project is still growing toward that all-in-one goal; skill trees and point-conserving attribute/skill respecs are next. Separate carried and stash gold editing is now on the development branch for version 0.2.
+> I’ve been running Diablo II on Mac hardware through Wine for years. I tried ATMA, D2 Character Editor, GoMule, and browser tabs, but the workflows were frustrating and I kept needing separate tools for offline character and item management. I wanted one place to organize characters, transfer items in bulk, search and filter well, plan builds, and look up runeword recipes. I asked my agent, **helloam.bot**, to help build it. A few hours later, I had something much better for my workflow. Now I use D2 Assistant as a companion while I play offline and plan characters. The project is still growing toward that all-in-one goal.
 
 ## Safety and known limits
 
@@ -73,7 +74,7 @@ This project currently builds for macOS on the development machine. Windows and 
 
 ## Roadmap
 
-- **Next version:** add class skill trees and point-conserving skill/attribute editing and respecs; these must never create points the character has not earned. Separate carried and stash gold editing, default-on changed-save backups, and five-at-a-time backup history are on the development branch for version 0.2.
+- **Next version:** add saved build plans that compare a character's target skills and stats with gear already in the local bank. The development build now includes classic skill trees, point-conserving skill/attribute respecs, separate carried and stash gold editing, default-on changed-save backups, and five-at-a-time backup history.
 - Invite D2R contributors to bring current-version save-format knowledge and sanitized fixtures; explore local fingerprint analysis for duplicate screening without connecting to Battle.net.
 - Improve item-property and requirement decoding.
 - Add optional, user-controlled experimental features.
@@ -84,4 +85,4 @@ See [CHANGELOG.md](CHANGELOG.md), [TODO.md](TODO.md), and the [deferred marketpl
 
 ## License
 
-D2 Assistant is released under the MIT License. The bundled runeword dataset includes its own attribution and license in [`src-ts/data`](src-ts/data).
+D2 Assistant is released under the MIT License. Bundled runeword and classic skill data include source details and notices in [`src-ts/data`](src-ts/data).

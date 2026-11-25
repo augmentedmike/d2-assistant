@@ -16,6 +16,11 @@ export interface CharacterBackupVersion {
   file_size: number
 }
 
+export interface CharacterBuildData {
+  class_code: string
+  skill_levels: number[]
+}
+
 export interface CharacterData {
   name: string
   class: string
@@ -110,6 +115,18 @@ export async function characterBackupHistory(characterPath: string): Promise<Cha
 
 export async function characterRestoreBackup(characterPath: string, backupId: number): Promise<string> {
   return await invoke<string>('character_restore_backup', { characterPath, backupId })
+}
+
+export async function characterBuildData(characterPath: string): Promise<CharacterBuildData> {
+  return await invoke<CharacterBuildData>('character_build_data', { characterPath })
+}
+
+export async function editCharacterBuild(
+  characterPath: string,
+  attributes: [number, number, number, number],
+  skillLevels: number[],
+): Promise<string> {
+  return await invoke<string>('edit_character_build', { characterPath, attributes, skillLevels })
 }
 
 export async function editCharacterGold(

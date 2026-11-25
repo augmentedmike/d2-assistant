@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
 import Runewords from './Runewords'
+import CharacterBuildEditor from './CharacterBuildEditor'
 import {
   scanCharacters,
   parseCharacter,
@@ -98,6 +99,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('characters')
   const [saveDir, setSaveDir] = useState(() => localStorage.getItem('d2-assistant.save-directory') ?? '')
   const [showExtendedRecipes, setShowExtendedRecipes] = useState(() => localStorage.getItem('d2-assistant.extended-recipes') === 'true')
+  const [enableCharacterEditor, setEnableCharacterEditor] = useState(() => localStorage.getItem('d2-assistant.character-editor') !== 'false')
   const [autoCharacterBackups, setAutoCharacterBackups] = useState(() => localStorage.getItem('d2-assistant.auto-character-backups') !== 'false')
   const [characters, setCharacters] = useState<CharacterListing[]>([])
   const [selected, setSelected] = useState<CharacterListing | null>(null)
@@ -183,6 +185,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('d2-assistant.extended-recipes', String(showExtendedRecipes))
   }, [showExtendedRecipes])
+
+  useEffect(() => {
+    localStorage.setItem('d2-assistant.character-editor', String(enableCharacterEditor))
+  }, [enableCharacterEditor])
 
   useEffect(() => {
     localStorage.setItem('d2-assistant.auto-character-backups', String(autoCharacterBackups))
@@ -716,6 +722,28 @@ export default function App() {
                       </div>
                     </div>
 
+                    {!loading && enableCharacterEditor && <CharacterBuildEditor
+                      key={selected.path}
+                      selected={selected}
+                      character={characterData}
+                      onSaved={async (path) => {
+                        const [refreshed, updatedData, versions] = await Promise.all([
+                          scanCharacters(saveDir, autoCharacterBackups),
+                          parseCharacter(path),
+                          characterBackupHistory(path),
+                        ])
+                        setCharacters(refreshed)
+                        const updatedCharacter = refreshed.find((item) => item.path === path)
+                        if (updatedCharacter) setSelected(updatedCharacter)
+                        setCharacterData(updatedData)
+                        setCharacterBackups(versions)
+                        setCarriedGoldDraft(String(updatedData.gold))
+                        setStashGoldDraft(String(updatedData.stash_gold))
+                        setNotice('Skill and attribute changes were saved with a verified backup.')
+                      }}
+                    />}
+                    {!loading && !enableCharacterEditor && <section className="md:col-span-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4"><h2 className="text-sm font-semibold uppercase tracking-wider text-amber-200">Skills & character points</h2><p className="mt-2 text-sm text-gray-400">Character editing is turned off. Enable it under Features to edit skill trees and attribute points.</p></section>}
+
                     <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-4">
                       <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
                         File
@@ -1024,6 +1052,15 @@ export default function App() {
                 <span>
                   <span className="block text-sm font-semibold text-white">Show D2R and Reign of the Warlock recipe references</span>
                   <span className="mt-1 block text-xs leading-relaxed text-gray-400">Off by default. When enabled, the Recipes tab includes non-LoD runewords with game and expansion warnings. This does not add D2R save-file support.</span>
+                </span>
+              </label>
+            </section>
+            <section className="mt-4 rounded-lg border border-neutral-800 bg-neutral-900/70 p-4">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input type="checkbox" checked={enableCharacterEditor} onChange={(event) => setEnableCharacterEditor(event.target.checked)} className="mt-1 accent-red-700" />
+                <span>
+                  <span className="block text-sm font-semibold text-white">Enable classic skill and attribute editing</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-gray-400">On by default because you requested it. Supports validated classic LoD version 96 saves. Changes always show a review and create a verified backup before writing.</span>
                 </span>
               </label>
             </section>
