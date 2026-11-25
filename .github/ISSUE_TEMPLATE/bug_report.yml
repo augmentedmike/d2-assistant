@@ -1,0 +1,48 @@
+name: Bug report
+description: Report a reproducible problem without sharing private save data.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Never attach character saves, stash files, database files, or backups. Redact usernames and full local paths."
+  - type: input
+    id: version
+    attributes:
+      label: D2 Assistant version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [macOS, Windows, Linux]
+    validations:
+      required: true
+  - type: textarea
+    id: game
+    attributes:
+      label: Game and save format
+      description: Original D2/LoD only; include patch and whether the save is a character or stash.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and redacted logs
+    validations:
+      required: true

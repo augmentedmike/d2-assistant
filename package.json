@@ -1,0 +1,46 @@
+{
+  "name": "d2-assistant",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A safer, searchable item bank for offline Diablo II: Lord of Destruction.",
+  "homepage": "https://github.com/augmentedmike/d2-assistant#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/augmentedmike/d2-assistant.git"
+  },
+  "license": "MIT",
+  "keywords": ["diablo-ii", "diablo2", "lord-of-destruction", "stash-manager", "tauri"],
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "tauri": "tauri --config src-rs/tauri.conf.json",
+    "tauri:dev": "tauri dev --config src-rs/tauri.conf.json",
+    "tauri:build": "tauri build --config src-rs/tauri.conf.json"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.8.4",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.3.5",
+    "@tauri-apps/cli": "^2",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.13.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vite": "^8.3.6"
+  }
+}

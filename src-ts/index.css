@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  width: 100%;
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+  accent-color: #b91c1c;
+  background: #090809;
+}
+
+::selection {
+  color: #fff7ed;
+  background: #991b1b;
+}
+
+button, input, select, summary {
+  -webkit-tap-highlight-color: transparent;
+}

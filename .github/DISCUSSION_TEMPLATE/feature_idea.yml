@@ -1,0 +1,30 @@
+title: "Feature idea: "
+labels: [feature-request]
+body:
+  - type: markdown
+    attributes:
+      value: "Feature proposals are voted on with the discussion upvote. Votes guide priority but do not guarantee implementation."
+  - type: textarea
+    id: problem
+    attributes:
+      label: What player problem should this solve?
+      validations:
+        required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      validations:
+        required: true
+  - type: input
+    id: game-format
+    attributes:
+      label: Game and save format
+      placeholder: Original Diablo II + LoD offline, v96 .d2x
+    validations:
+      required: true
+  - type: textarea
+    id: safety
+    attributes:
+      label: Save-file, privacy, and safety impact
+      description: Explain any files read or written and how originals stay protected.

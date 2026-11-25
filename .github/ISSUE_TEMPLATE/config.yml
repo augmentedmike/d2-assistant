@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Suggest or vote on a feature
+    url: https://github.com/augmentedmike/d2-assistant/discussions
+    about: Discuss feature ideas and vote with reactions. Include the game and save format.
+  - name: Ask a usage question
+    url: https://github.com/augmentedmike/d2-assistant/discussions
+    about: Ask questions without attaching private character or stash files.
