@@ -10,6 +10,7 @@ import {
   bankExportItems,
   characterBackupHistory,
   characterRestoreBackup,
+  editCharacterGold,
 } from './lib/tauri'
 import type {
   CharacterListing,
@@ -102,6 +103,9 @@ export default function App() {
   const [selected, setSelected] = useState<CharacterListing | null>(null)
   const [characterData, setCharacterData] = useState<CharacterData | null>(null)
   const [characterBackups, setCharacterBackups] = useState<CharacterBackupVersion[]>([])
+  const [showAllCharacterBackups, setShowAllCharacterBackups] = useState(false)
+  const [carriedGoldDraft, setCarriedGoldDraft] = useState('')
+  const [stashGoldDraft, setStashGoldDraft] = useState('')
   const [bankItems, setBankItems] = useState<BankItem[]>([])
   const [selectedBankIds, setSelectedBankIds] = useState<Set<number>>(new Set())
   const [transferCharacterPath, setTransferCharacterPath] = useState('')
@@ -212,10 +216,15 @@ export default function App() {
       ])
       setCharacterData(data)
       setCharacterBackups(versions)
+      setCarriedGoldDraft(String(data.gold))
+      setStashGoldDraft(String(data.stash_gold))
+      setShowAllCharacterBackups(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setCharacterData(null)
       setCharacterBackups([])
+      setCarriedGoldDraft('')
+      setStashGoldDraft('')
     } finally {
       setLoading(false)
     }
@@ -234,6 +243,47 @@ export default function App() {
       setNotice(result)
       await loadCharacters()
       await handleSelect(selected)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveGold = async () => {
+    if (!selected || !characterData) return
+    const carriedGold = Number(carriedGoldDraft)
+    const stashGold = Number(stashGoldDraft)
+    const carriedGoldLimit = characterData.level * 10_000
+    if (!Number.isInteger(carriedGold) || carriedGold < 0 || carriedGold > carriedGoldLimit) {
+      setError(`Carried gold must be a whole number from 0 to ${carriedGoldLimit.toLocaleString()} at level ${characterData.level}.`)
+      return
+    }
+    if (!Number.isInteger(stashGold) || stashGold < 0 || stashGold > 2_500_000) {
+      setError('Stash gold must be a whole number from 0 to 2,500,000.')
+      return
+    }
+    if (carriedGold === characterData.gold && stashGold === characterData.stash_gold) return
+    const targetIsAppCopy = selected.path.replaceAll('\\', '/').split('/').pop()?.replace(/\.d2s$/i, '').endsWith('_d2a')
+    const destinationLabel = targetIsAppCopy ? selected.path : selected.path.replace(/\.d2s$/i, '_d2a.d2s')
+    const confirmed = window.confirm(
+      `Apply these gold values to ${destinationLabel}?\n\nCarried: ${characterData.gold.toLocaleString()} → ${carriedGold.toLocaleString()}\nStash: ${characterData.stash_gold.toLocaleString()} → ${stashGold.toLocaleString()}\n\nThe original save is preserved. An existing D2 Assistant copy is backed up first.`,
+    )
+    if (!confirmed) return
+    setLoading(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const outputPath = await editCharacterGold(selected.path, carriedGold, stashGold)
+      const refreshed = await scanCharacters(saveDir, autoCharacterBackups)
+      setCharacters(refreshed)
+      const outputCharacter = refreshed.find((character) => character.path === outputPath)
+      if (outputCharacter) {
+        await handleSelect(outputCharacter)
+      } else {
+        await handleSelect(selected)
+      }
+      setNotice(`Saved gold changes to ${outputPath}. The original character save was left untouched.`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -570,7 +620,6 @@ export default function App() {
                             ['Life', characterData.life],
                             ['Mana', characterData.mana],
                             ['Stamina', characterData.stamina],
-                            ['Gold', characterData.gold],
                           ] as const
                         ).map(([label, value]) => (
                           <div key={label} className="flex justify-between">
@@ -580,6 +629,61 @@ export default function App() {
                         ))}
                       </div>
                     </div>
+
+                    <section className="md:col-span-2 rounded-lg border border-amber-900/60 bg-neutral-900 p-4">
+                      <div className="mb-4">
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-amber-200">Edit gold</h2>
+                        <p className="mt-1 text-xs text-gray-400">Change carried gold and stash gold independently. Saving creates or updates a `_d2a` character copy; your selected original remains untouched.</p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <label className="block">
+                          <span className="mb-1 block text-sm font-medium text-gray-200">Carried gold (belt/inventory)</span>
+                          <input
+                            aria-label="Carried gold in belt and inventory"
+                            type="number"
+                            min="0"
+                            max={characterData.level * 10_000}
+                            step="1"
+                            value={carriedGoldDraft}
+                            onChange={(event) => setCarriedGoldDraft(event.target.value)}
+                            disabled={loading || characterData.save_version !== 96 || !characterData.stats_validated}
+                            className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-lg text-white focus:border-red-700 focus:outline-none disabled:opacity-50"
+                          />
+                          <span className="mt-1 block text-xs text-gray-500">Current: {characterData.gold.toLocaleString()} · Maximum at level {characterData.level}: {(characterData.level * 10_000).toLocaleString()}</span>
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-sm font-medium text-gray-200">Personal stash gold</span>
+                          <input
+                            aria-label="Personal stash gold"
+                            type="number"
+                            min="0"
+                            max="2500000"
+                            step="1"
+                            value={stashGoldDraft}
+                            onChange={(event) => setStashGoldDraft(event.target.value)}
+                            disabled={loading || characterData.save_version !== 96 || !characterData.stats_validated}
+                            className="w-full rounded border border-neutral-700 bg-neutral-950 px-3 py-2 text-lg text-white focus:border-red-700 focus:outline-none disabled:opacity-50"
+                          />
+                          <span className="mt-1 block text-xs text-gray-500">Current: {characterData.stash_gold.toLocaleString()} · Maximum: 2,500,000</span>
+                        </label>
+                      </div>
+                      {characterData.save_version !== 96 && (
+                        <p className="mt-3 rounded border border-amber-900/60 bg-amber-950/30 p-2 text-xs text-amber-200">Gold editing currently supports classic Lord of Destruction version 96 saves. This character is save version {characterData.save_version}.</p>
+                      )}
+                      {!characterData.stats_validated && (
+                        <p className="mt-3 rounded border border-amber-900/60 bg-amber-950/30 p-2 text-xs text-amber-200">This character’s stat block could not be validated, so gold editing is disabled.</p>
+                      )}
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-800 pt-4">
+                        <p className="text-xs text-gray-400">Save creates `{selected.path.split(/[\\/]/).pop()?.replace(/\.d2s$/i, '_d2a.d2s')}`. Existing app copies are backed up.</p>
+                        <button
+                          onClick={() => void handleSaveGold()}
+                          disabled={loading || !characterData.stats_validated || characterData.save_version !== 96 || (Number(carriedGoldDraft) === characterData.gold && Number(stashGoldDraft) === characterData.stash_gold)}
+                          className="rounded bg-red-800 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {loading ? 'Saving…' : 'Review and save gold'}
+                        </button>
+                      </div>
+                    </section>
 
                     <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-4">
                       <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
@@ -637,7 +741,7 @@ export default function App() {
                         <p className="text-xs text-gray-500">No saved versions yet. Automatic backups are {autoCharacterBackups ? 'on' : 'off'}.</p>
                       ) : (
                         <ul className="space-y-2">
-                          {characterBackups.map((version) => (
+                          {(showAllCharacterBackups ? characterBackups : characterBackups.slice(0, 5)).map((version) => (
                             <li key={version.id} className="flex flex-wrap items-center justify-between gap-3 rounded border border-neutral-800 bg-neutral-950/60 px-3 py-2">
                               <div>
                                 <div className="text-sm text-white">{formatWhen(version.created_at)}</div>
@@ -647,6 +751,14 @@ export default function App() {
                             </li>
                           ))}
                         </ul>
+                      )}
+                      {characterBackups.length > 5 && (
+                        <button
+                          onClick={() => setShowAllCharacterBackups((current) => !current)}
+                          className="mt-3 text-xs font-medium text-amber-200 hover:text-amber-100"
+                        >
+                          {showAllCharacterBackups ? 'Show fewer versions' : `Show all ${characterBackups.length} versions`}
+                        </button>
                       )}
                     </section>
 

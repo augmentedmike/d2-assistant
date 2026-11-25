@@ -4,7 +4,7 @@ mod d2x;
 mod items;
 
 use ::d2s::{
-    BodyLocation, D2Save, Item, ItemMode, ItemPosition, StorePage, TxtData,
+    BodyLocation, D2Save, Item, ItemMode, ItemPosition, StatId, StorePage, TxtData,
     bits::BitReader,
     data::{ExternalData, GameTable},
 };
@@ -134,7 +134,7 @@ fn scan_characters(
                 let parsed = parse_d2s(file_path.to_str().unwrap_or(""));
                 let backup_warning = if auto_backups {
                     match &parsed {
-                        Ok(_) => match capture_character_backup(&app, &file_path, false) {
+                        Ok(_) => match observe_character_save(&app, &file_path) {
                             Ok(_) => None,
                             Err(error) => Some(error),
                         },
@@ -166,6 +166,58 @@ fn scan_characters(
     }
 
     ParseResult::Ok(listings)
+}
+
+fn observe_character_save(app: &tauri::AppHandle, character_path: &Path) -> Result<(), String> {
+    let bytes =
+        fs::read(character_path).map_err(|e| format!("could not read character save: {e}"))?;
+    D2Save::from_bytes(&bytes)
+        .map_err(|e| format!("character save could not be validated for backup: {e}"))?;
+    let fingerprint = content_fingerprint(&bytes);
+    let path = character_path.to_string_lossy().to_string();
+    let conn = open_app_db(app)?;
+    let previous: Option<String> = conn
+        .query_row(
+            "SELECT content_fingerprint FROM character_save_state WHERE original_path = ?1",
+            [&path],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|e| format!("could not read character backup state: {e}"))?;
+    match previous {
+        None => {
+            conn.execute(
+                "INSERT INTO character_save_state (original_path, content_fingerprint) VALUES (?1, ?2)",
+                rusqlite::params![path, fingerprint],
+            )
+            .map_err(|e| format!("could not initialize character backup state: {e}"))?;
+        }
+        Some(previous) if previous != fingerprint => {
+            capture_character_backup(app, character_path, false)?;
+            conn.execute(
+                "UPDATE character_save_state SET content_fingerprint = ?1 WHERE original_path = ?2",
+                rusqlite::params![fingerprint, path],
+            )
+            .map_err(|e| format!("could not update character backup state: {e}"))?;
+        }
+        Some(_) => {}
+    }
+    Ok(())
+}
+
+fn update_character_save_state(
+    app: &tauri::AppHandle,
+    character_path: &Path,
+    bytes: &[u8],
+) -> Result<(), String> {
+    let conn = open_app_db(app)?;
+    conn.execute(
+        "INSERT INTO character_save_state (original_path, content_fingerprint) VALUES (?1, ?2)
+         ON CONFLICT(original_path) DO UPDATE SET content_fingerprint = excluded.content_fingerprint",
+        rusqlite::params![character_path.to_string_lossy(), content_fingerprint(bytes)],
+    )
+    .map_err(|e| format!("could not update character backup state: {e}"))?;
+    Ok(())
 }
 
 fn content_fingerprint(bytes: &[u8]) -> String {
@@ -330,10 +382,129 @@ fn character_restore_backup(
     }
     fs::remove_file(&displaced_path)
         .map_err(|e| format!("restored save is valid, but temporary cleanup failed: {e}"))?;
+    conn.execute(
+        "INSERT INTO character_save_state (original_path, content_fingerprint) VALUES (?1, ?2)
+         ON CONFLICT(original_path) DO UPDATE SET content_fingerprint = excluded.content_fingerprint",
+        rusqlite::params![character_path, expected_fingerprint],
+    )
+    .map_err(|e| format!("restore succeeded but backup state could not be updated: {e}"))?;
     Ok(format!(
         "restored character save at {}",
         target_path.display()
     ))
+}
+
+#[command]
+fn edit_character_gold(
+    app: tauri::AppHandle,
+    character_path: String,
+    carried_gold: u32,
+    stash_gold: u32,
+) -> Result<String, String> {
+    const STASH_GOLD_LIMIT: u32 = 2_500_000;
+    let selected_path = PathBuf::from(&character_path);
+    if !selected_path.is_file() {
+        return Err("selected character save does not exist".into());
+    }
+    let selected_stem = selected_path
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .ok_or("invalid character filename")?;
+    let selected_is_app_copy = selected_stem.ends_with("_d2a");
+    let output_path = if selected_is_app_copy {
+        selected_path.clone()
+    } else {
+        selected_path
+            .parent()
+            .ok_or("character path has no parent directory")?
+            .join(format!("{selected_stem}_d2a.d2s"))
+    };
+    let base_path = if output_path.is_file() {
+        &output_path
+    } else {
+        &selected_path
+    };
+    let base_bytes = fs::read(base_path)
+        .map_err(|e| format!("could not read character save {}: {e}", base_path.display()))?;
+    let mut save = D2Save::from_bytes(&base_bytes)
+        .map_err(|e| format!("could not decode character save: {e}"))?;
+    if save.version != 96 {
+        return Err(
+            "gold editing currently supports only classic Lord of Destruction version 96 saves"
+                .into(),
+        );
+    }
+    let level = save.character.level as u32;
+    if !(1..=99).contains(&level) {
+        return Err("character level must be between 1 and 99 before editing gold".into());
+    }
+    let carried_gold_limit = level * 10_000;
+    if carried_gold > carried_gold_limit {
+        return Err(format!(
+            "carried gold cannot exceed {carried_gold_limit} at level {level}"
+        ));
+    }
+    if stash_gold > STASH_GOLD_LIMIT {
+        return Err(format!("stash gold cannot exceed {STASH_GOLD_LIMIT}"));
+    }
+    let old_carried = save.stats.get(StatId::GOLD).max(0) as u32;
+    let old_stash = save.stats.get(StatId::STASH_GOLD).max(0) as u32;
+    if old_carried == carried_gold && old_stash == stash_gold {
+        return Ok(output_path.to_string_lossy().to_string());
+    }
+
+    save.stats.set(StatId::GOLD, carried_gold as i64);
+    save.stats.set(StatId::STASH_GOLD, stash_gold as i64);
+    let output_bytes = save
+        .to_bytes()
+        .map_err(|e| format!("could not encode edited character save: {e}"))?;
+    let check = D2Save::from_bytes(&output_bytes)
+        .map_err(|e| format!("edited save failed validation: {e}"))?;
+    if check.stats.get(StatId::GOLD) != carried_gold as i64
+        || check.stats.get(StatId::STASH_GOLD) != stash_gold as i64
+    {
+        return Err("edited save failed gold value verification".into());
+    }
+
+    if output_path.is_file() {
+        capture_character_backup(&app, &output_path, true)?;
+    }
+    let timestamp = now_secs()?;
+    let temp_path = unique_sidecar_path(&output_path, "gold-tmp", timestamp);
+    let displaced_path = unique_sidecar_path(&output_path, "gold-previous", timestamp);
+    fs::write(&temp_path, &output_bytes)
+        .map_err(|e| format!("could not prepare edited save: {e}"))?;
+    if output_path.exists() {
+        fs::rename(&output_path, &displaced_path)
+            .map_err(|e| format!("could not preserve existing app save: {e}"))?;
+    }
+    if let Err(error) = fs::rename(&temp_path, &output_path) {
+        if displaced_path.exists() {
+            let _ = fs::rename(&displaced_path, &output_path);
+        }
+        let _ = fs::remove_file(&temp_path);
+        return Err(format!("could not save edited character copy: {error}"));
+    }
+    let written =
+        fs::read(&output_path).map_err(|e| format!("edited save could not be reread: {e}"))?;
+    let verified =
+        D2Save::from_bytes(&written).map_err(|e| format!("written save failed validation: {e}"))?;
+    if written != output_bytes
+        || verified.stats.get(StatId::GOLD) != carried_gold as i64
+        || verified.stats.get(StatId::STASH_GOLD) != stash_gold as i64
+    {
+        let _ = fs::remove_file(&output_path);
+        if displaced_path.exists() {
+            let _ = fs::rename(&displaced_path, &output_path);
+        }
+        return Err("written save failed verification; previous app copy was restored".into());
+    }
+    if displaced_path.exists() {
+        fs::remove_file(&displaced_path)
+            .map_err(|e| format!("save is valid, but temporary cleanup failed: {e}"))?;
+    }
+    update_character_save_state(&app, &output_path, &output_bytes)?;
+    Ok(output_path.to_string_lossy().to_string())
 }
 
 fn app_db_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -364,6 +535,15 @@ fn open_app_db(app: &tauri::AppHandle) -> Result<rusqlite::Connection, String> {
 }
 
 fn init_app_db(conn: &rusqlite::Connection) -> Result<(), String> {
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS character_save_state (
+            original_path TEXT PRIMARY KEY,
+            content_fingerprint TEXT NOT NULL
+        )",
+        [],
+    )
+    .map_err(|e| format!("failed to init character save tracking: {e}"))?;
+
     conn.execute(
         "CREATE TABLE IF NOT EXISTS character_backups (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1015,6 +1195,7 @@ pub fn run() {
             scan_characters,
             character_backup_history,
             character_restore_backup,
+            edit_character_gold,
             bank_add_item,
             bank_delete_item,
             bank_get_items,

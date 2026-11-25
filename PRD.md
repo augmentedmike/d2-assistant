@@ -38,12 +38,12 @@ D2 Assistant is a local desktop item bank and transfer helper for offline charac
 - Welcome contributions from people and coding agents under the same quality bar. See `CONTRIBUTING.md`.
 - Optional features are registered as local feature flags with a description, default state, and compatibility notes.
 
-## Next version — character backup history and restore
+## Character backup history and restore
 
-- Add a local preference for automatic versioned character-save backups; enabled by default.
-- On app start, character-folder refresh, and every 30 seconds while the app is open, detect changed selected `.d2s` saves by SHA-256 and create one timestamped, checksum-verified backup for each new version; repeated scans must not create duplicate snapshots.
+- Automatic versioned character-save backups default on.
+- On app start, character-folder refresh, and every 30 seconds while the app is open, track selected `.d2s` saves by SHA-256. Establish a baseline without creating a version; create one timestamped, checksum-verified version only after file contents change. Repeated scans of unchanged saves create no versions.
 - Create a verified pre-change backup before every app operation that writes or restores a character save.
-- Show each character's backup history with timestamp, file size, and verification status.
+- Show each character's backup history with timestamp, file size, and verification status; initially display the five newest versions and let users expand the list.
 - Let users preview and restore a selected version with a clear confirmation. Before restoring over a save, preserve the current version, write atomically, and validate the restored save.
 - Let users disable automatic versioned backups in local settings while keeping pre-restore safety backups mandatory.
 - Keep snapshots local, provide a clear backup folder location, and document storage use and retention controls.
@@ -57,16 +57,22 @@ D2 Assistant is a local desktop item bank and transfer helper for offline charac
 - Assess Android only after desktop save workflows are stable.
 - Keep the peer-to-peer offline LoD marketplace deferred under `MARKETPLACE-PRD.md`.
 
-## Next version — skill trees and character points
+## Current editor — character gold
+
+- Provide separate edit fields for carried gold (belt/inventory) and personal stash gold.
+- Enforce the classic LoD limits: carried gold is capped by character level and stash gold at 2,500,000.
+- Review the requested amounts and confirm before writing a validated `_d2a` copy; never change the selected original.
+
+## Next version — skill trees and attributes
 
 - Add a skill-tree view for each classic Diablo II / LoD class, showing learned skills, levels, prerequisites, and unspent points.
-- Let a player allocate and edit skill points with prerequisite and point-total validation.
-- Let a player reset skill allocations and reassign earned skill points.
-- Let a player edit and reset Strength, Dexterity, Vitality, and Energy allocations while preserving the character's earned point total.
-- Let a player edit carried (belt/inventory) gold and personal stash gold as separate values, each within its save-format legal maximum.
-- Treat this as an experimental, opt-in feature set until validated against supported offline save versions.
+- Let a player allocate and edit skills only from the character's existing unspent skill points. Never grant points beyond what the character has earned.
+- Allow skill respecs by returning already allocated points to the pool, then reassigning those same points subject to prerequisites and total-point validation.
+- Let a player allocate attributes only from the character's existing unspent stat points. Never grant points beyond what the character has earned.
+- Allow attribute respecs by returning already allocated points to the pool, then reassigning those same points while preserving the earned total.
+- Treat skill-tree and attribute editing as an experimental, opt-in feature set until validated against supported offline save versions.
 - On every apply/reset operation, preserve the original, create a verified backup of an existing `_d2a` output before replacing it, write only a `_d2a` copy, and validate checksum and parsed values before reporting success.
-- Show a review of all proposed point and gold changes before writing. Require explicit confirmation for a full reset.
+- Show a review of all proposed point changes before writing. Require explicit confirmation for a full reset.
 - Keep original Diablo II + LoD as the supported baseline. Any D2R save support must be a separately versioned, opt-in capability with its own validation.
 
 Community proposals may extend the supported game matrix. D2R work must use its own version-specific parser and fixtures. Battle.net duplicate analysis, if pursued, must remain a local utility unless a supported data source is established; it must not claim to authenticate ownership or prevent server-side duplication.

@@ -20,6 +20,7 @@ export interface CharacterData {
   name: string
   class: string
   level: number
+  save_version: number
   experience: number
   strength: number
   dexterity: number
@@ -29,6 +30,7 @@ export interface CharacterData {
   mana: number
   stamina: number
   gold: number
+  stash_gold: number
   stat_points: number
   skill_points: number
   file_size: number
@@ -108,6 +110,18 @@ export async function characterBackupHistory(characterPath: string): Promise<Cha
 
 export async function characterRestoreBackup(characterPath: string, backupId: number): Promise<string> {
   return await invoke<string>('character_restore_backup', { characterPath, backupId })
+}
+
+export async function editCharacterGold(
+  characterPath: string,
+  carriedGold: number,
+  stashGold: number,
+): Promise<string> {
+  return await invoke<string>('edit_character_gold', {
+    characterPath,
+    carriedGold,
+    stashGold,
+  })
 }
 
 export async function parseCharacter(path: string): Promise<CharacterData> {

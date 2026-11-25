@@ -18,7 +18,7 @@ D2 Assistant helps organize classic Diablo II items and move selected gear back 
 
 ## Why I built this
 
-> I’ve been running Diablo II on Mac hardware through Wine for years. I tried ATMA, D2 Character Editor, GoMule, and browser tabs, but the workflows were frustrating and I kept needing separate tools for offline character and item management. I wanted one place to organize characters, transfer items in bulk, search and filter well, plan builds, and look up runeword recipes. I asked my agent, **helloam.bot**, to help build it. A few hours later, I had something much better for my workflow. Now I use D2 Assistant as a companion while I play offline and plan characters. The project is still growing toward that all-in-one goal; character skill, attribute, and gold editing are planned for the next version.
+> I’ve been running Diablo II on Mac hardware through Wine for years. I tried ATMA, D2 Character Editor, GoMule, and browser tabs, but the workflows were frustrating and I kept needing separate tools for offline character and item management. I wanted one place to organize characters, transfer items in bulk, search and filter well, plan builds, and look up runeword recipes. I asked my agent, **helloam.bot**, to help build it. A few hours later, I had something much better for my workflow. Now I use D2 Assistant as a companion while I play offline and plan characters. The project is still growing toward that all-in-one goal; skill trees and point-conserving attribute/skill respecs are next. Separate carried and stash gold editing is now on the development branch for version 0.2.
 
 ## Safety and known limits
 
@@ -73,7 +73,7 @@ This project currently builds for macOS on the development machine. Windows and 
 
 ## Roadmap
 
-- **Next version:** add class skill trees and an opt-in character editor for skill allocation/reset, attribute allocation/reset, and separate belt/inventory and stash gold editing. Add default-on automatic versioned character-save backups with history and confirmed restore.
+- **Next version:** add class skill trees and point-conserving skill/attribute editing and respecs; these must never create points the character has not earned. Separate carried and stash gold editing, default-on changed-save backups, and five-at-a-time backup history are on the development branch for version 0.2.
 - Invite D2R contributors to bring current-version save-format knowledge and sanitized fixtures; explore local fingerprint analysis for duplicate screening without connecting to Battle.net.
 - Improve item-property and requirement decoding.
 - Add optional, user-controlled experimental features.

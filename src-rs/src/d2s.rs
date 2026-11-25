@@ -44,6 +44,7 @@ pub struct CharacterData {
     pub name: String,
     pub class: CharClass,
     pub level: u8,
+    pub save_version: u32,
     pub experience: u32,
     pub strength: u16,
     pub dexterity: u16,
@@ -53,6 +54,7 @@ pub struct CharacterData {
     pub mana: u16,
     pub stamina: u16,
     pub gold: u32,
+    pub stash_gold: u32,
     pub stat_points: u16,
     pub skill_points: u16,
     pub file_size: u32,
@@ -82,6 +84,7 @@ struct ParsedStats {
     mana: u16,
     stamina: u16,
     gold: u32,
+    stash_gold: u32,
     stat_points: u16,
     skill_points: u16,
     experience: u32,
@@ -135,6 +138,7 @@ fn parse_stats(data: &[u8], header_level: u8) -> Option<(ParsedStats, usize)> {
             }
             13 => stats.experience = raw,
             14 => stats.gold = raw,
+            15 => stats.stash_gold = raw,
             _ => {}
         }
     }
@@ -269,7 +273,7 @@ pub fn parse_d2s(path: &str) -> Result<CharacterData, D2sError> {
     }
 
     // Offset 0x04: file version (0x60 = 1.10+)
-    let _version = read_u32(&mut cursor)?;
+    let save_version = read_u32(&mut cursor)?;
 
     // Offset 0x08: file size
     let file_size = read_u32(&mut cursor)?;
@@ -323,6 +327,7 @@ pub fn parse_d2s(path: &str) -> Result<CharacterData, D2sError> {
         name,
         class,
         level,
+        save_version,
         experience: stats.experience,
         strength: stats.strength,
         dexterity: stats.dexterity,
@@ -332,6 +337,7 @@ pub fn parse_d2s(path: &str) -> Result<CharacterData, D2sError> {
         mana: stats.mana,
         stamina: stats.stamina,
         gold: stats.gold,
+        stash_gold: stats.stash_gold,
         stat_points: stats.stat_points,
         skill_points: stats.skill_points,
         file_size,

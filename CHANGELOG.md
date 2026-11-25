@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Added default-on, local versioned character-save backups with 30-second background change detection, history, and confirmed restore. Restores preserve and validate the current save first.
+- Added separate carried (belt/inventory) and personal stash gold editing for classic LoD version 96 saves, with level/stash caps, a review prompt, and `_d2a` output.
+- Added default-on, local versioned character-save backups with 30-second background change detection. The first scan records a baseline without creating a version; the first observation only records a baseline, and a version is created only after contents change. Backup history shows the latest five first, with an option to expand.
+- Added confirmed backup restore; the current save is preserved and the restored save is validated.
 
 ## 0.1.0 — Initial desktop release
 

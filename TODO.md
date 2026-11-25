@@ -17,14 +17,14 @@ This is the public project task list. Completed work is recorded in `CHANGELOG.m
 ## Next version — character editing and backup recovery
 
 - [ ] Add class skill trees with current allocations, prerequisites, and unspent points.
-- [ ] Allow skill allocation/editing and reset/reallocation with point-total validation.
-- [ ] Allow Strength, Dexterity, Vitality, and Energy allocation/reset while preserving earned totals.
-- [ ] Allow editing carried gold in the belt/inventory and stash gold independently, enforcing each save-format limit.
+- [ ] Allow skill allocation only from unspent earned skill points; permit respec/reallocation of already spent points without increasing the earned total.
+- [ ] Allow attribute allocation only from unspent earned stat points; permit respec/reallocation of already spent points without increasing the earned total.
+- [x] Add separate carried (belt/inventory) and stash gold fields with save-format limits and a review before writing.
 - [ ] Gate the editor behind a local experimental feature flag; show a review and require confirmation before any write.
 - [ ] Write only validated `_d2a` copies and back up prior outputs; never modify originals.
 - [x] Add automatic, versioned character-save backups behind a local setting that defaults on.
-- [x] Detect changed saves by SHA-256 on app start, folder refresh, and background checks while the app is open; save one timestamped, verified snapshot per new version.
-- [x] Add character backup history with timestamps and verification status.
+- [x] Detect changed saves by SHA-256 on app start, folder refresh, and background checks while the app is open; establish an initial baseline without creating a version and save one verified snapshot only after file contents change.
+- [x] Add character backup history with timestamps and verification status; show the newest five by default with an option to expand.
 - [x] Add confirmed restore with a verified backup of the current save, atomic write, and post-restore validation.
 - [ ] Add local retention controls and disclose backup storage location.
 
