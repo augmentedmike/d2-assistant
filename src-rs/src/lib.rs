@@ -317,15 +317,17 @@ fn capture_character_backup(
     D2Save::from_bytes(&verified_bytes)
         .map_err(|e| format!("character backup failed save validation: {e}"))?;
     let created_at = now_secs()?;
+    let file_size = i64::try_from(bytes.len())
+        .map_err(|_| "character save is too large to record in backup history".to_string())?;
     conn.execute(
         "INSERT INTO character_backups (original_path, snapshot_path, content_fingerprint, file_size, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-        rusqlite::params![original_path, snapshot_path.to_string_lossy(), fingerprint, bytes.len() as u64, created_at],
+        rusqlite::params![original_path, snapshot_path.to_string_lossy(), fingerprint, file_size, created_at],
     )
     .map_err(|e| format!("could not record character backup: {e}"))?;
     Ok(Some(CharacterBackupVersion {
         id: conn.last_insert_rowid(),
         created_at,
-        file_size: bytes.len() as u64,
+        file_size: file_size as u64,
     }))
 }
 
@@ -340,10 +342,18 @@ fn character_backup_history(
         .map_err(|e| format!("could not read character backup history: {e}"))?;
     statement
         .query_map([character_path], |row| {
+            let file_size = row.get::<_, i64>(2)?;
+            let file_size = u64::try_from(file_size).map_err(|error| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    2,
+                    rusqlite::types::Type::Integer,
+                    Box::new(error),
+                )
+            })?;
             Ok(CharacterBackupVersion {
                 id: row.get(0)?,
                 created_at: row.get::<_, i64>(1)?,
-                file_size: row.get::<_, u64>(2)?,
+                file_size,
             })
         })
         .map_err(|e| format!("could not read character backup history: {e}"))?
@@ -747,8 +757,6 @@ fn edit_character_gold(
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_log::Builder::default().build())
-        .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             get_app_setting,

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Hardened the Tauri WebView with a restrictive production CSP, a separate localhost-only Vite development CSP, and prototype freezing. Removed unused Tauri SQL/log plugins and the unneeded SQL frontend permission. Upgraded rusqlite to 0.41.1 to resolve the bundled SQLite memory-disclosure advisory; documented the full security review and remaining upstream/release hardening items in `docs/SECURITY-REVIEW.md`.
 - Refactored Rust persistence and bank transfer commands out of the Tauri entry module, extracted grid placement into a dedicated module, and removed unused parser fields/helpers.
 - Extracted bank item metadata, attributes, compatibility, filtering, and gold validation from the main React component into tested pure functions; metadata is parsed once per bank refresh and reused by filters and cards.
 - Added frontend tests for bank item presentation, compatibility, filtering, and gold caps plus Rust unit coverage for item bit parsing, labels/classification, grid placement boundaries, setting validation, and idempotent DB setup. CI now runs frontend/Rust tests, formatting, Clippy with warnings denied, clone detection, and reports function complexity.

@@ -4,6 +4,9 @@ This is the public project task list. Completed work is recorded in `CHANGELOG.m
 
 ## Release follow-up
 
+- [ ] Pin GitHub Actions to immutable commit SHAs and enable Dependabot for Bun, Cargo, and GitHub Actions.
+- [ ] Add recurring secret and dependency vulnerability scans to CI, with an explicit policy for upstream unmaintained/unsound warnings.
+- [ ] Verify production CSP and IPC/dialog/image behavior in macOS, Windows, and Linux bundles.
 - [x] Start backend refactor by extracting SQLite/settings, bank transfer commands, and inventory-grid placement into focused Rust modules.
 - [x] Add Rust unit coverage for item bit parsing, grid placement bounds, and repeatable database initialization; run tests and Clippy in CI.
 - [x] Extract bank item display/filter rules into a pure module with focused unit tests.
