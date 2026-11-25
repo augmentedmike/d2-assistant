@@ -18,7 +18,7 @@ D2 Assistant helps organize classic Diablo II items and move selected gear back 
 
 ## Why I built this
 
-> I’ve been running Diablo II on Mac hardware through Wine for years. I used ATMA, D2 Character Editor, and browser tabs, but item transfers were clumsy and I was missing the features I wanted most: bulk drag-and-drop, useful search and filters, and runeword recipes in one place. I asked my agent, **helloam.bot**, to help build it. A few hours later, I had something much better for my workflow. Now I use D2 Assistant as a companion while I play offline and plan characters.
+> I’ve been running Diablo II on Mac hardware through Wine for years. I tried ATMA, D2 Character Editor, GoMule, and browser tabs, but the workflows were frustrating and I kept needing separate tools for offline character and item management. I wanted one place to organize characters, transfer items in bulk, search and filter well, plan builds, and look up runeword recipes. I asked my agent, **helloam.bot**, to help build it. A few hours later, I had something much better for my workflow. Now I use D2 Assistant as a companion while I play offline and plan characters. The project is still growing toward that all-in-one goal; character skill, attribute, and gold editing are planned for the next version.
 
 ## Safety and known limits
 
