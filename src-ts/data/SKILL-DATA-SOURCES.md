@@ -2,7 +2,7 @@
 
 `classic-skills-v96.json` is a compact, normalized catalog for classic Lord of Destruction. It contains the seven classic classes' 30 skill IDs, display labels, tree/row/column positions, level gates, hard-point caps, and prerequisite links; it does not include skill formulas, game assets, or full text tables.
 
-The catalog was derived from the Diablo II 1.13 data tables `Skills.txt`, `SkillDesc.txt`, and `CharStats.txt` mirrored in [fabd/diablo2](https://github.com/fabd/diablo2/tree/master/code/d2_113_data). The class starting attributes used by the editor also come from `CharStats.txt`. Names with changed in-game labels (for example, Dopplezon → Decoy) are normalized in the catalog. Verify against supported game data before changing it.
+The catalog was derived from the Diablo II 1.13 data tables `Skills.txt`, `SkillDesc.txt`, and `CharStats.txt` mirrored in [fabd/diablo2](https://github.com/fabd/diablo2/tree/master/code/d2_113_data). The class starting attributes used by the editor also come from `CharStats.txt`. Names with changed in-game labels (for example, Dopplezon → Decoy) are normalized in the catalog. The `icon` field maps each skill to its extracted classic game icon; see [SKILL-ICON-ASSETS.md](./SKILL-ICON-ASSETS.md) for the asset source and rights notice. Verify against supported game data before changing it.
 
 The upstream repository is MIT licensed. Its notice is included here for attribution:
 

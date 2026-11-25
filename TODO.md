@@ -4,6 +4,12 @@ This is the public project task list. Completed work is recorded in `CHANGELOG.m
 
 ## Release follow-up
 
+- [x] Start backend refactor by extracting SQLite/settings, bank transfer commands, and inventory-grid placement into focused Rust modules.
+- [x] Add Rust unit coverage for item bit parsing, grid placement bounds, and repeatable database initialization; run tests and Clippy in CI.
+- [x] Extract bank item display/filter rules into a pure module with focused unit tests.
+- [ ] Add sanitized save fixtures and behavior tests for character edits, backup/restore, and bank import/export; add frontend component tests.
+- [x] Add a repeatable code-clone metric with an initial 0% duplicate-line baseline (8-line/60-token minimum, 5% CI ceiling).
+- [x] Record the engineering standards and measured quality baseline, including complexity hotspots and test limitations.
 - [x] Save and restore the selected game-save folder in the app's local settings database, migrating the previous WebView preference.
 - [ ] Improve decoding for magical, rare, set, unique, crafted, and runeword item requirements.
 - [ ] Add starter build knowledge and build-aware item matching.
@@ -18,6 +24,7 @@ This is the public project task list. Completed work is recorded in `CHANGELOG.m
 ## Next version — character editing and backup recovery
 
 - [x] Add classic LoD skill trees with current allocations, prerequisites, and unspent points.
+- [x] Add locally bundled original classic skill icons to the Character Lab skill trees.
 - [x] Allow skill allocation only from unspent earned skill points; permit respec/reallocation of already spent points without increasing the earned total.
 - [x] Allow attribute allocation only from unspent earned stat points; permit respec/reallocation of already spent points without increasing the earned total.
 - [x] Add separate carried (belt/inventory) and stash gold fields with save-format limits and a review before writing.

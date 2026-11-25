@@ -15,7 +15,7 @@ D2 Assistant helps organize classic Diablo II items and move selected gear back 
 - **Safer transfers:** move selected items into a chosen character's inventory or personal stash. The app backs up the selected save, updates it in place, and validates the result so it does not create duplicate character files.
 - **Character overview:** read local character saves and compare known item class/level requirements with a transfer target.
 - **Persistent setup:** remember the selected game-save folder in D2 Assistant's local settings database across app restarts and updates.
-- **Character Lab:** view classic skill trees and reallocate skill and attribute points without increasing points the character has earned. Writes are backed up and limited to validated classic LoD version 96 saves.
+- **Character Lab:** view classic skill trees with their original skill icons and reallocate skill and attribute points without increasing points the character has earned. Writes are backed up and limited to validated classic LoD version 96 saves.
 - **Runeword reference:** browse ordered runes, sockets, bases, and bonuses offline. Standard LoD recipes are shown by default; optional D2R/Reign references are clearly marked and can be hidden.
 
 ## Why I built this
@@ -86,4 +86,4 @@ See [CHANGELOG.md](CHANGELOG.md), [TODO.md](TODO.md), and the [deferred marketpl
 
 ## License
 
-D2 Assistant is released under the MIT License. Bundled runeword and classic skill data include source details and notices in [`src-ts/data`](src-ts/data).
+D2 Assistant is released under the MIT License. Bundled runeword and classic skill data include source details and notices in [`src-ts/data`](src-ts/data). The original Diablo II skill artwork is not covered by the project MIT license; see [`SKILL-ICON-ASSETS.md`](src-ts/data/SKILL-ICON-ASSETS.md).

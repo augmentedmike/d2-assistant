@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Refactored Rust persistence and bank transfer commands out of the Tauri entry module, extracted grid placement into a dedicated module, and removed unused parser fields/helpers.
+- Extracted bank item metadata, attributes, compatibility, filtering, and gold validation from the main React component into tested pure functions; metadata is parsed once per bank refresh and reused by filters and cards.
+- Added frontend tests for bank item presentation, compatibility, filtering, and gold caps plus Rust unit coverage for item bit parsing, labels/classification, grid placement boundaries, setting validation, and idempotent DB setup. CI now runs frontend/Rust tests, formatting, Clippy with warnings denied, clone detection, and reports function complexity.
+- Added `docs/ENGINEERING-STANDARDS.md` to record the quality gates, baseline metrics, coverage limits, and remaining high-risk test gaps.
+- Added all 210 classic skill tree icons, mapped from game data, to the Character Lab and documented the Blizzard artwork rights separately from the project license.
+- Fixed the icon palette and asset output path so the bundled skill icons render with their original colors instead of corrupted colors.
 - Persisted the selected game-save folder in the app's local SQLite settings, with one-time migration from the old WebView setting.
 - Added classic LoD skill trees and skill/attribute editing with class starting values, skill-level gates, prerequisites, point conservation, respec-all, pre-write backups, validated in-place saves for version 96 characters, and a local Features toggle enabled by default.
 - Changed character gold controls to inline editable carried/stash values with automatic caps and per-value Max out buttons.

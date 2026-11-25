@@ -14,10 +14,6 @@ impl<'a> BitReader<'a> {
         }
     }
 
-    pub fn bit_pos(&self) -> usize {
-        self.bit
-    }
-
     pub fn read(&mut self, n: usize) -> Option<u64> {
         let mut v = 0u64;
         for i in 0..n {
@@ -42,7 +38,7 @@ impl<'a> BitReader<'a> {
     }
 
     pub fn byte_pos(&self) -> usize {
-        (self.bit + 7) / 8
+        self.bit.div_ceil(8)
     }
 }
 
@@ -57,8 +53,6 @@ pub struct ParsedItem {
     pub quality: Option<u8>,
     pub parent: u8,
     pub equipped_slot: u8,
-    /// Byte offset of this item's `JM` header in the source file.
-    pub offset: usize,
 }
 
 /// Parse one item starting at a `JM` header. Returns item + next byte offset.
@@ -118,7 +112,6 @@ pub fn parse_item_at(data: &[u8], offset: usize) -> Option<(ParsedItem, usize)> 
                 quality: None,
                 parent,
                 equipped_slot,
-                offset,
             },
             br.byte_pos(),
         ));
@@ -149,7 +142,6 @@ pub fn parse_item_at(data: &[u8], offset: usize) -> Option<(ParsedItem, usize)> 
                 quality: Some(2),
                 parent,
                 equipped_slot,
-                offset,
             },
             br.byte_pos(),
         ));
@@ -177,7 +169,6 @@ pub fn parse_item_at(data: &[u8], offset: usize) -> Option<(ParsedItem, usize)> 
             quality,
             parent,
             equipped_slot,
-            offset,
         },
         next,
     ))
@@ -336,4 +327,111 @@ pub fn is_gem_code(code: &str) -> bool {
             | "skl"
             | "skz"
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Default)]
+    struct BitFixture {
+        bytes: Vec<u8>,
+        bit: usize,
+    }
+
+    impl BitFixture {
+        fn push(&mut self, value: u64, width: usize) {
+            for offset in 0..width {
+                if self.bit / 8 == self.bytes.len() {
+                    self.bytes.push(0);
+                }
+                if (value >> offset) & 1 == 1 {
+                    self.bytes[self.bit / 8] |= 1 << (self.bit % 8);
+                }
+                self.bit += 1;
+            }
+        }
+
+        fn simple_item(code: &[u8; 4]) -> Vec<u8> {
+            let mut fixture = Self::default();
+            fixture.push(0x4D4A, 16); // JM
+            fixture.push(0, 4); // unknown
+            fixture.push(1, 1); // identified
+            fixture.push(0, 6); // unknown
+            fixture.push(0, 1); // socketed
+            fixture.push(0, 1); // unknown
+            fixture.push(0, 1); // new
+            fixture.push(0, 2); // unknown
+            fixture.push(0, 1); // ear
+            fixture.push(0, 1); // starting item
+            fixture.push(0, 3); // unknown
+            fixture.push(1, 1); // simple
+            fixture.push(1, 1); // ethereal
+            fixture.push(0, 1); // unknown
+            fixture.push(0, 1); // personalized
+            fixture.push(0, 1); // unknown
+            fixture.push(0, 1); // runeword
+            fixture.push(0, 5); // unknown
+            fixture.push(0x60, 8); // item version
+            fixture.push(0, 2); // unknown
+            fixture.push(3, 3); // parent
+            fixture.push(2, 4); // equipped slot
+            fixture.push(4, 4); // x
+            fixture.push(5, 4); // y
+            fixture.push(1, 3); // panel
+            for byte in code {
+                fixture.push(*byte as u64, 8);
+            }
+            fixture.push(0, 3); // socketed item count
+            fixture.bytes
+        }
+    }
+
+    #[test]
+    fn bit_reader_reads_lsb_first_and_respects_byte_offsets() {
+        let bytes = [0b1011_0100, 0b0000_0011];
+        let mut reader = BitReader::new(&bytes, 0);
+        assert_eq!(reader.read(4), Some(0b0100));
+        assert_eq!(reader.read(4), Some(0b1011));
+        assert_eq!(reader.read(2), Some(0b11));
+        assert_eq!(reader.read(1), Some(0));
+        assert_eq!(reader.read(1), Some(0));
+
+        let mut offset_reader = BitReader::new(&bytes, 1);
+        assert_eq!(offset_reader.read(2), Some(0b11));
+    }
+
+    #[test]
+    fn parses_simple_item_fields_and_aligns_to_next_byte() {
+        let mut bytes = BitFixture::simple_item(b"r01 ");
+        bytes.extend_from_slice(b"NEXT");
+        let (item, next) = parse_item_at(&bytes, 0).expect("valid simple item");
+
+        assert_eq!(item.code, "r01");
+        assert!(item.simple);
+        assert!(item.identified);
+        assert!(item.ethereal);
+        assert!(!item.socketed);
+        assert_eq!(item.parent, 3);
+        assert_eq!(item.equipped_slot, 2);
+        assert_eq!(&bytes[next..next + 4], b"NEXT");
+    }
+
+    #[test]
+    fn rejects_non_item_and_truncated_item_records() {
+        assert!(parse_item_at(b"NO", 0).is_none());
+        assert!(parse_item_at(b"JM", 0).is_none());
+        assert!(parse_item_at(b"xJM", 1).is_none());
+    }
+
+    #[test]
+    fn classifies_item_codes_and_quality_labels() {
+        assert!(is_gem_code("gpr"));
+        assert!(is_gem_code("skz"));
+        assert!(!is_gem_code("r01"));
+        assert_eq!(item_display_name("r03"), "Tir Rune");
+        assert_eq!(item_quality_name(Some(7)), "Unique");
+        assert_eq!(item_quality_name(None), "Unknown");
+        assert_eq!(base_item_details("amu"), Some(("Amulet", "Jewelry")));
+    }
 }

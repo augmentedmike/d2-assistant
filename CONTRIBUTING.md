@@ -39,8 +39,12 @@ Agent-authored patches are welcome when a human contributor takes responsibility
 ```sh
 bun install --frozen-lockfile
 bun run build
-cargo check --manifest-path src-rs/Cargo.toml
-cargo test --manifest-path src-rs/Cargo.toml
+bun run lint
+bun run test:frontend
+cargo fmt --manifest-path src-rs/Cargo.toml -- --check
+bun run lint:rust
+bun run test:rust
+bun run metrics:duplication
 ```
 
 Save-file integration checks are ignored unless you explicitly provide local fixtures with `D2A_TEST_CHARACTER` or `D2A_TEST_STASH` and pass `-- --ignored`. Never add personal fixtures to a pull request.

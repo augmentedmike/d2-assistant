@@ -36,12 +36,8 @@ pub struct StashItemSummary {
 /// Error type for D2X parsing
 #[derive(Debug, thiserror::Error)]
 pub enum D2xError {
-    #[error("file not found: {0}")]
-    NotFound(String),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("file too short: {0} bytes, expected at least {1}")]
-    TooShort(usize, usize),
     #[error("unsupported stash format (expected D2X header)")]
     UnsupportedFormat,
 }
@@ -253,21 +249,20 @@ fn item_class_requirement(code: &str, txt: &TxtData) -> String {
             if fields
                 .get(code_column)
                 .is_some_and(|value| *value == item_type)
+                && let Some(class_code) = fields.get(class_column)
             {
-                if let Some(class_code) = fields.get(class_column) {
-                    let class = match *class_code {
-                        "ama" => "Amazon",
-                        "bar" => "Barbarian",
-                        "nec" => "Necromancer",
-                        "pal" => "Paladin",
-                        "sor" => "Sorceress",
-                        "ass" => "Assassin",
-                        "dru" => "Druid",
-                        _ => "Any",
-                    };
-                    if class != "Any" {
-                        return class.into();
-                    }
+                let class = match *class_code {
+                    "ama" => "Amazon",
+                    "bar" => "Barbarian",
+                    "nec" => "Necromancer",
+                    "pal" => "Paladin",
+                    "sor" => "Sorceress",
+                    "ass" => "Assassin",
+                    "dru" => "Druid",
+                    _ => "Any",
+                };
+                if class != "Any" {
+                    return class.into();
                 }
             }
         }
@@ -328,19 +323,6 @@ pub fn parse_d2x(path: &str) -> Result<StashData, D2xError> {
         format: "unknown".into(),
         items: vec![],
     })
-}
-
-/// First gem found in a D2X stash (for bank seed import).
-pub fn first_gem_in_stash(path: &str) -> Result<Option<ParsedItem>, D2xError> {
-    let data = fs::read(path).map_err(D2xError::Io)?;
-    if data.len() < 11 || &data[0..3] != b"D2X" {
-        return Err(D2xError::UnsupportedFormat);
-    }
-    let item_count = u16::from_le_bytes([data[3], data[4]]);
-    let gem = parse_d2x_items(&data, item_count)
-        .into_iter()
-        .find(|i| is_gem_code(&i.code));
-    Ok(gem)
 }
 
 #[cfg(test)]

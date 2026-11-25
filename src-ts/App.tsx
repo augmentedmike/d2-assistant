@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
 import Runewords from './Runewords'
 import CharacterBuildEditor from './CharacterBuildEditor'
+import { bankItemDetails, filterBankItems, itemCompatibility, validateGoldDrafts } from './bankItemPresentation'
+import type { Compatibility } from './bankItemPresentation'
 import {
   scanCharacters,
   parseCharacter,
@@ -38,63 +40,6 @@ type Tab = 'characters' | 'bank' | 'runewords' | 'features'
 
 function formatWhen(epochSecs: number): string {
   return new Date(epochSecs * 1000).toLocaleString()
-}
-
-function parseAffixes(json: string): string[] {
-  try {
-    const parsed = JSON.parse(json)
-    return Array.isArray(parsed) ? parsed.map(String) : []
-  } catch {
-    return []
-  }
-}
-
-function itemType(item: BankItem): string {
-  const tag = parseAffixes(item.affixes_json).find((value) => value.startsWith('Type: '))
-  return tag?.slice(6) ?? 'Uncategorized'
-}
-
-function itemRarity(item: BankItem): string {
-  const tag = parseAffixes(item.affixes_json).find((value) => value.startsWith('Rarity: '))
-  return tag?.slice(8) ?? 'Unknown'
-}
-
-function itemProperties(item: BankItem): string[] {
-  const metadataLabels = ['Type: ', 'D2 item code: ', 'Rarity: ']
-  return parseAffixes(item.affixes_json).filter(
-    (value) => !metadataLabels.some((label) => value.startsWith(label)) &&
-      !['Identified', 'Unidentified', 'Ethereal', 'Non-ethereal', 'Original item record retained for transfer'].includes(value),
-  )
-}
-
-function itemAttributes(item: BankItem): { label: string; value: string }[] {
-  const type = itemType(item)
-  const isSocketableGear = ['Weapon', 'Armor', 'Shield'].includes(type)
-  const attributes: { label: string; value: string }[] = []
-  if (item.level_req >= 0) {
-    if (item.level_req > 0) attributes.push({ label: 'Level req.', value: String(item.level_req) })
-  } else {
-    attributes.push({ label: 'Level req.', value: 'Unknown' })
-  }
-  if (item.class_req && item.class_req !== 'Unknown') {
-    attributes.push({ label: 'Class req.', value: item.class_req })
-  }
-  if (isSocketableGear && item.sockets > 0) {
-    attributes.push({ label: 'Sockets', value: String(item.sockets) })
-  } else if (isSocketableGear && item.sockets < 0) {
-    attributes.push({ label: 'Sockets', value: 'Socketed' })
-  }
-  return attributes
-}
-
-type Compatibility = 'usable' | 'unusable' | 'unknown'
-
-function itemCompatibility(item: BankItem, character: CharacterListing | undefined): Compatibility {
-  if (!character || !item.class_req || item.class_req === 'Unknown') return 'unknown'
-  if (item.class_req !== 'Any' && item.class_req !== character.class) return 'unusable'
-  if (item.level_req < 0) return 'unknown'
-  if (character.level < item.level_req) return 'unusable'
-  return 'usable'
 }
 
 export default function App() {
@@ -302,17 +247,12 @@ export default function App() {
 
   const handleSaveGold = async (carriedDraft = carriedGoldDraft, stashDraft = stashGoldDraft) => {
     if (!selected || !characterData) return
-    const carriedGold = Number(carriedDraft)
-    const stashGold = Number(stashDraft)
-    const carriedGoldLimit = characterData.level * 10_000
-    if (!Number.isInteger(carriedGold) || carriedGold < 0 || carriedGold > carriedGoldLimit) {
-      setError(`Carried gold must be a whole number from 0 to ${carriedGoldLimit.toLocaleString()} at level ${characterData.level}.`)
+    const gold = validateGoldDrafts(characterData.level, carriedDraft, stashDraft)
+    if (!gold.valid) {
+      setError(gold.error)
       return
     }
-    if (!Number.isInteger(stashGold) || stashGold < 0 || stashGold > 2_500_000) {
-      setError('Stash gold must be a whole number from 0 to 2,500,000.')
-      return
-    }
+    const { carriedGold, stashGold } = gold
     if (carriedGold === characterData.gold && stashGold === characterData.stash_gold) return
     const confirmed = window.confirm(
       `Update gold in ${selected.path}?\n\nCarried: ${characterData.gold.toLocaleString()} → ${carriedGold.toLocaleString()}\nStash: ${characterData.stash_gold.toLocaleString()} → ${stashGold.toLocaleString()}\n\nA verified versioned backup is saved first.`,
@@ -408,34 +348,25 @@ export default function App() {
     }
   }
 
-  const bankTypes = [...new Set(bankItems.map(itemType))].sort()
+  const bankDetails = useMemo(
+    () => new Map(bankItems.map((item) => [item.id, bankItemDetails(item)])),
+    [bankItems],
+  )
+  const bankTypes = [...new Set(bankItems.map((item) => bankDetails.get(item.id)!.type))].sort()
   const bankClasses = [...new Set(bankItems.map((item) => item.class_req))].sort()
-  const bankRarities = [...new Set(bankItems.map(itemRarity))].sort()
+  const bankRarities = [...new Set(bankItems.map((item) => bankDetails.get(item.id)!.rarity))].sort()
   const matchCharacter = characters.find((character) => character.path === transferCharacterPath)
-  const filteredBankItems = bankItems.filter((item) => {
-    const search = bankSearch.trim().toLowerCase()
-    const matchesSearch =
-      !search ||
-      [item.base_item, item.affixes_json, item.class_req]
-        .join(' ')
-        .toLowerCase()
-        .includes(search)
-    const matchesType = !bankTypeFilter || itemType(item) === bankTypeFilter
-    const matchesClass = !bankClassFilter || item.class_req === bankClassFilter
-    const matchesRarity = !bankRarityFilter || itemRarity(item) === bankRarityFilter
-    const matchesTransfer = bankTransferFilter === 'all' ||
-      (bankTransferFilter === 'available' && !item.transferred_to) ||
-      (bankTransferFilter === 'transferred' && Boolean(item.transferred_to))
-    const matchesCompatibility = bankMatchFilter === 'all' ||
-      itemCompatibility(item, matchCharacter) === bankMatchFilter
-    const matchesMin = !minLevelFilter || (item.level_req >= 0 && item.level_req >= Number(minLevelFilter))
-    const matchesMax = !maxLevelFilter || (item.level_req >= 0 && item.level_req <= Number(maxLevelFilter))
-    const matchesSockets = !socketFilter || String(item.sockets) === socketFilter
-    return (
-      matchesSearch && matchesType && matchesClass && matchesRarity && matchesTransfer && matchesCompatibility &&
-      matchesMin && matchesMax && matchesSockets
-    )
-  })
+  const filteredBankItems = filterBankItems(bankItems, bankDetails, {
+    search: bankSearch,
+    type: bankTypeFilter,
+    class: bankClassFilter,
+    rarity: bankRarityFilter,
+    transfer: bankTransferFilter,
+    compatibility: bankMatchFilter,
+    minLevel: minLevelFilter,
+    maxLevel: maxLevelFilter,
+    sockets: socketFilter,
+  }, matchCharacter)
   const clearBankFilters = () => {
     setBankSearch('')
     setBankTypeFilter('')
@@ -1014,8 +945,7 @@ export default function App() {
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {filteredBankItems.map((item) => {
-                const affixes = itemProperties(item)
-                const attributes = itemAttributes(item)
+                const details = bankDetails.get(item.id)!
                 const compatibility = itemCompatibility(item, matchCharacter)
                 return (
                   <article key={item.id} className="min-w-0 rounded-lg border border-neutral-800 bg-neutral-900/70 p-4 shadow-sm transition-colors hover:border-neutral-700 hover:bg-neutral-900">
@@ -1036,11 +966,11 @@ export default function App() {
                         />
                         <div className="min-w-0">
                         <h3 className="break-words font-semibold text-white">{item.base_item}</h3>
-                        <p className="mt-1 text-[11px] uppercase tracking-wide text-amber-200">{itemType(item)}</p>
+                        <p className="mt-1 text-[11px] uppercase tracking-wide text-amber-200">{details.type}</p>
                         </div>
                       </div>
                       <span className="shrink-0 rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[11px] text-amber-300">
-                        {itemRarity(item)}
+                        {details.rarity}
                       </span>
                     </div>
 
@@ -1048,16 +978,16 @@ export default function App() {
                       {compatibility === 'usable' ? `Meets known requirements for ${matchCharacter.name}` : compatibility === 'unusable' ? `Does not meet requirements for ${matchCharacter.name}` : item.level_req < 0 ? 'Level requirement unknown — compatibility not guessed' : 'Class requirement unknown — compatibility not guessed'}
                     </p>}
 
-                    {affixes.length > 0 && (
+                    {details.properties.length > 0 && (
                       <ul className="mt-3 space-y-1 border-t border-neutral-800 pt-3">
-                        {affixes.map((affix) => (
+                        {details.properties.map((affix) => (
                           <li key={affix} className="text-xs leading-relaxed text-amber-200">{affix}</li>
                         ))}
                       </ul>
                     )}
 
-                    {attributes.length > 0 && <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-neutral-800 pt-3 text-xs">
-                      {attributes.map((attribute) => (
+                    {details.attributes.length > 0 && <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-neutral-800 pt-3 text-xs">
+                      {details.attributes.map((attribute) => (
                         <div key={attribute.label}>
                           <dt className="text-gray-500">{attribute.label}</dt>
                           <dd className={`mt-0.5 ${attribute.label === 'Class req.' ? CLASS_COLORS[attribute.value] || CLASS_COLORS.Any : 'text-gray-200'}`}>{attribute.value}</dd>

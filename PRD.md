@@ -67,6 +67,7 @@ D2 Assistant is a local desktop item bank and transfer helper for offline charac
 ## Current editor — skills and attributes
 
 - Show the seven classic LoD skill trees with current hard-point levels, skill requirements, and prerequisites.
+- Display the corresponding original classic skill icon for each skill, bundled locally with source and rights attribution.
 - Let players edit and respec skill levels using only unspent plus already allocated skill points. Never increase the character's earned point total.
 - Let players edit and respec strength, dexterity, vitality, and energy using only unspent plus already allocated stat points, while preserving class starting values and the earned total.
 - Before a write, show the proposed allocations and unspent totals, require confirmation, create a verified versioned backup, update the selected save in place, and validate the result.

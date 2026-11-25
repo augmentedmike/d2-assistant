@@ -28,5 +28,15 @@ jobs:
         run: bun install --frozen-lockfile
       - name: Build frontend
         run: bun run build
-      - name: Check Rust backend
-        run: cargo check --manifest-path src-rs/Cargo.toml
+      - name: Test frontend logic
+        run: bun run test:frontend
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src-rs/Cargo.toml -- --check
+      - name: Lint Rust backend
+        run: bun run lint:rust
+      - name: Check code duplication
+        run: bun run metrics:duplication
+      - name: Report function complexity
+        run: bun run metrics:complexity
+      - name: Test Rust backend
+        run: bun run test:rust

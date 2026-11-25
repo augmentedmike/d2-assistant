@@ -6,6 +6,7 @@ import type { CharacterBuildData, CharacterData, CharacterListing } from './lib/
 type SkillDefinition = {
   id: number
   name: string
+  icon: string
   tree: number
   row: number
   column: number
@@ -193,7 +194,7 @@ export default function CharacterBuildEditor({ selected, character, onSaved }: P
       </div>
       <div className="grid grid-cols-3 gap-2" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gridAutoRows: 'minmax(5.5rem, auto)' }}>
         {rules.skills.map((skill, index) => skill.tree === activeTree && <article key={skill.id} style={{ gridColumn: skill.column + 1, gridRow: skill.row + 1 }} className="flex min-w-0 flex-col justify-between rounded border border-neutral-800 bg-neutral-950 p-2">
-          <div className="flex items-start justify-between gap-2"><div><h4 className="text-sm font-medium text-gray-100">{skill.name}</h4><p className="mt-0.5 text-[11px] text-gray-500">Level {skill.requiredLevel}{skill.prerequisites.length ? ` · needs ${skill.prerequisites.map((prerequisite) => rules.skills[prerequisite]?.name).join(', ')}` : ''}</p></div><span className="rounded bg-neutral-800 px-2 py-0.5 text-sm font-semibold text-amber-200">{skills[index] ?? 0}</span></div>
+          <div className="flex items-start justify-between gap-2"><div className="flex min-w-0 items-start gap-2"><img src={`/skill-icons/${skill.icon}`} alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded border border-neutral-800 bg-black object-contain" /><div className="min-w-0"><h4 className="text-sm font-medium text-gray-100">{skill.name}</h4><p className="mt-0.5 text-[11px] text-gray-500">Level {skill.requiredLevel}{skill.prerequisites.length ? ` · needs ${skill.prerequisites.map((prerequisite) => rules.skills[prerequisite]?.name).join(', ')}` : ''}</p></div></div><span className="rounded bg-neutral-800 px-2 py-0.5 text-sm font-semibold text-amber-200">{skills[index] ?? 0}</span></div>
           <div className="mt-2 flex justify-end gap-2"><button type="button" aria-label={`Remove point from ${skill.name}`} disabled={busy || (skills[index] ?? 0) === 0 || rules.skills.some((dependent, depIndex) => (skills[depIndex] ?? 0) > 0 && dependent.prerequisites.includes(index))} onClick={() => changeSkill(index, -1)} className="h-7 w-8 rounded border border-neutral-700 text-gray-300 hover:border-red-700 disabled:opacity-30">−</button><button type="button" aria-label={`Add point to ${skill.name}`} title={character.level < skill.requiredLevel ? `Requires character level ${skill.requiredLevel}` : undefined} disabled={busy || unspentSkills < 1 || (skills[index] ?? 0) >= skill.maxLevel || character.level < skill.requiredLevel || !skill.prerequisites.every((required) => skills[required] > 0)} onClick={() => changeSkill(index, 1)} className="h-7 w-8 rounded border border-amber-900 text-amber-300 hover:bg-amber-950/50 disabled:opacity-30">+</button></div>
         </article>)}
       </div>

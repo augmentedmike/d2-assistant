@@ -218,8 +218,6 @@ fn parse_equipped_items(data: &[u8], stats_end: usize) -> Vec<EquippedItem> {
 /// Error type for D2S parsing
 #[derive(Debug, thiserror::Error)]
 pub enum D2sError {
-    #[error("file not found: {0}")]
-    NotFound(String),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
     #[error("invalid signature: expected 0xAA55AA55, got 0x{0:08X}")]
