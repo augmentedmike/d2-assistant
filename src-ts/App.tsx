@@ -12,6 +12,8 @@ import {
   characterBackupHistory,
   characterRestoreBackup,
   editCharacterGold,
+  getAppSetting,
+  setAppSetting,
 } from './lib/tauri'
 import type {
   CharacterListing,
@@ -97,7 +99,8 @@ function itemCompatibility(item: BankItem, character: CharacterListing | undefin
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('characters')
-  const [saveDir, setSaveDir] = useState(() => localStorage.getItem('d2-assistant.save-directory') ?? '')
+  const [saveDir, setSaveDir] = useState('')
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
   const [showExtendedRecipes, setShowExtendedRecipes] = useState(() => localStorage.getItem('d2-assistant.extended-recipes') === 'true')
   const [enableCharacterEditor, setEnableCharacterEditor] = useState(() => localStorage.getItem('d2-assistant.character-editor') !== 'false')
   const [autoCharacterBackups, setAutoCharacterBackups] = useState(() => localStorage.getItem('d2-assistant.auto-character-backups') !== 'false')
@@ -128,6 +131,7 @@ export default function App() {
   const selectedCharacterPath = useRef<string | null>(null)
 
   const loadCharacters = useCallback(async () => {
+    if (!settingsLoaded) return
     if (!saveDir.trim()) {
       setError('Choose your Diablo II save folder first.')
       return
@@ -135,6 +139,7 @@ export default function App() {
     setLoading(true)
     setError(null)
     try {
+      await setAppSetting('save_directory', saveDir)
       const found = await scanCharacters(saveDir, autoCharacterBackups)
       setCharacters(found)
       setSelected((current) => current ? found.find((character) => character.path === current.path) ?? current : null)
@@ -145,10 +150,10 @@ export default function App() {
     } finally {
       setLoading(false)
     }
-  }, [saveDir, autoCharacterBackups])
+  }, [saveDir, autoCharacterBackups, settingsLoaded])
 
   const monitorCharacterFolder = useCallback(async () => {
-    if (!saveDir.trim() || !autoCharacterBackups) return
+    if (!settingsLoaded || !saveDir.trim() || !autoCharacterBackups) return
     try {
       const found = await scanCharacters(saveDir, true)
       setCharacters(found)
@@ -159,7 +164,7 @@ export default function App() {
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
-  }, [saveDir, autoCharacterBackups])
+  }, [saveDir, autoCharacterBackups, settingsLoaded])
 
   const loadBank = useCallback(async () => {
     setLoading(true)
@@ -179,8 +184,45 @@ export default function App() {
   }, [loadBank])
 
   useEffect(() => {
-    localStorage.setItem('d2-assistant.save-directory', saveDir)
-  }, [saveDir])
+    let active = true
+    const initializeSaveDirectory = async () => {
+      try {
+        const saved = await getAppSetting('save_directory')
+        if (saved !== null) {
+          if (active) setSaveDir(saved)
+          localStorage.removeItem('d2-assistant.save-directory')
+          return
+        }
+        // Migrate the previous WebView preference once into the persistent app database.
+        const legacy = localStorage.getItem('d2-assistant.save-directory') ?? ''
+        if (legacy.trim()) {
+          await setAppSetting('save_directory', legacy)
+          if (active) setSaveDir(legacy)
+          localStorage.removeItem('d2-assistant.save-directory')
+        }
+      } catch (err) {
+        if (active) {
+          setError(err instanceof Error ? err.message : String(err))
+          const legacy = localStorage.getItem('d2-assistant.save-directory') ?? ''
+          if (legacy.trim()) setSaveDir(legacy)
+        }
+      } finally {
+        if (active) setSettingsLoaded(true)
+      }
+    }
+    void initializeSaveDirectory()
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
+    if (!settingsLoaded || !saveDir.trim()) return
+    const timeout = window.setTimeout(() => {
+      void setAppSetting('save_directory', saveDir).catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : String(err))
+      })
+    }, 300)
+    return () => window.clearTimeout(timeout)
+  }, [saveDir, settingsLoaded])
 
   useEffect(() => {
     localStorage.setItem('d2-assistant.extended-recipes', String(showExtendedRecipes))
@@ -195,13 +237,14 @@ export default function App() {
   }, [autoCharacterBackups])
 
   useEffect(() => {
-    if (!saveDir.trim() || !autoCharacterBackups) return
+    if (!settingsLoaded || !saveDir.trim() || !autoCharacterBackups) return
     const interval = window.setInterval(() => void monitorCharacterFolder(), 30_000)
     return () => window.clearInterval(interval)
-  }, [saveDir, autoCharacterBackups, monitorCharacterFolder])
+  }, [saveDir, autoCharacterBackups, settingsLoaded, monitorCharacterFolder])
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
+      if (!settingsLoaded) return
       if (tab === 'characters' && saveDir) void loadCharacters()
       if (tab === 'bank') {
         void loadBank()
@@ -209,7 +252,7 @@ export default function App() {
       }
     }, 0)
     return () => window.clearTimeout(timeout)
-  }, [tab, saveDir, loadBank, loadCharacters])
+  }, [tab, saveDir, settingsLoaded, loadBank, loadCharacters])
 
   const handleSelect = async (char: CharacterListing) => {
     selectedCharacterPath.current = char.path
@@ -457,15 +500,16 @@ export default function App() {
           <div className="flex items-center gap-4">
             <input
               type="text"
-              placeholder="Choose Diablo II save folder"
+              placeholder={settingsLoaded ? 'Choose Diablo II save folder' : 'Restoring saved game location…'}
               value={saveDir}
               onChange={(e) => setSaveDir(e.target.value)}
+              disabled={!settingsLoaded}
               className="text-sm bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-white focus:outline-none focus:border-red-700 w-96"
             />
-            <button onClick={() => void chooseSaveDirectory()} className="text-sm bg-neutral-800 hover:bg-neutral-700 px-3 py-1 rounded">Browse…</button>
+            <button onClick={() => void chooseSaveDirectory()} disabled={!settingsLoaded} className="text-sm bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 px-3 py-1 rounded">Browse…</button>
             <button
               onClick={() => void loadCharacters()}
-              disabled={loading || !saveDir}
+              disabled={!settingsLoaded || loading || !saveDir}
               className="text-sm bg-red-800 hover:bg-red-700 disabled:opacity-50 px-3 py-1 rounded"
             >
               {loading ? 'Scanning...' : 'Scan'}

@@ -16,12 +16,13 @@ D2 Assistant is a local desktop item bank and transfer helper for offline charac
 ## Core release features
 
 1. Scan a user-selected local save folder and show character details.
-2. Back up and import items from supported stashes into a searchable local bank.
-3. Filter by item type, rarity, class/level requirements, sockets, and transfer status.
-4. Keep multi-selection while refining filters and transfer selected items to a chosen character inventory or personal stash.
-5. Back up the selected character save before any edit or item transfer, update that save in place, and validate the result to avoid generating duplicate character files.
-6. Browse offline runeword recipes with ordered runes, sockets, valid bases, effects, and availability labels.
-7. Let users opt into or out of optional feature sets locally through the Features screen. Extended D2R/Reign recipe references are off by default; safety behavior cannot be disabled.
+2. Persist the selected save-folder path in app-local settings on disk and restore it at startup; a scan failure must not clear the saved path.
+3. Back up and import items from supported stashes into a searchable local bank.
+4. Filter by item type, rarity, class/level requirements, sockets, and transfer status.
+5. Keep multi-selection while refining filters and transfer selected items to a chosen character inventory or personal stash.
+6. Back up the selected character save before any edit or item transfer, update that save in place, and validate the result to avoid generating duplicate character files.
+7. Browse offline runeword recipes with ordered runes, sockets, valid bases, effects, and availability labels.
+8. Let users opt into or out of optional feature sets locally through the Features screen. Extended D2R/Reign recipe references are off by default; safety behavior cannot be disabled.
 
 ## Safety requirements
 

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Persisted the selected game-save folder in the app's local SQLite settings, with one-time migration from the old WebView setting.
 - Added classic LoD skill trees and skill/attribute editing with class starting values, skill-level gates, prerequisites, point conservation, respec-all, pre-write backups, validated in-place saves for version 96 characters, and a local Features toggle enabled by default.
 - Changed character gold controls to inline editable carried/stash values with automatic caps and per-value Max out buttons.
 - Changed gold editing to update the selected save in place after creating a verified versioned backup; no extra character file is created.

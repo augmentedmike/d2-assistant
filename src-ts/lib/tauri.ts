@@ -93,6 +93,14 @@ export type NewBankItem = {
 
 type ParseResult<T> = { type: 'Ok'; data: T } | { type: 'Err'; data: string }
 
+export async function getAppSetting(key: string): Promise<string | null> {
+  return await invoke<string | null>('get_app_setting', { key })
+}
+
+export async function setAppSetting(key: string, value: string): Promise<void> {
+  await invoke<void>('set_app_setting', { key, value })
+}
+
 function unwrapParseResult<T>(result: ParseResult<T>): T {
   if (result.type === 'Err') {
     throw new Error(result.data)

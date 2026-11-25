@@ -4,6 +4,7 @@ This is the public project task list. Completed work is recorded in `CHANGELOG.m
 
 ## Release follow-up
 
+- [x] Save and restore the selected game-save folder in the app's local settings database, migrating the previous WebView preference.
 - [ ] Improve decoding for magical, rare, set, unique, crafted, and runeword item requirements.
 - [ ] Add starter build knowledge and build-aware item matching.
 - [ ] Add a broader, sanitized fixture set for supported classic save formats.

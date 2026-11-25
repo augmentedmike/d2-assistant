@@ -787,6 +787,16 @@ fn open_app_db(app: &tauri::AppHandle) -> Result<rusqlite::Connection, String> {
 
 fn init_app_db(conn: &rusqlite::Connection) -> Result<(), String> {
     conn.execute(
+        "CREATE TABLE IF NOT EXISTS app_settings (
+            setting_key TEXT PRIMARY KEY,
+            setting_value TEXT NOT NULL,
+            updated_at INTEGER NOT NULL
+        )",
+        [],
+    )
+    .map_err(|e| format!("failed to initialize app settings: {e}"))?;
+
+    conn.execute(
         "CREATE TABLE IF NOT EXISTS character_save_state (
             original_path TEXT PRIMARY KEY,
             content_fingerprint TEXT NOT NULL
@@ -892,6 +902,36 @@ fn init_app_db(conn: &rusqlite::Connection) -> Result<(), String> {
         .map_err(|e| format!("failed to save decoded bank requirements: {e}"))?;
     }
 
+    Ok(())
+}
+
+#[command]
+fn get_app_setting(app: tauri::AppHandle, key: String) -> Result<Option<String>, String> {
+    let conn = open_app_db(&app)?;
+    conn.query_row(
+        "SELECT setting_value FROM app_settings WHERE setting_key = ?1",
+        [key],
+        |row| row.get(0),
+    )
+    .optional()
+    .map_err(|e| format!("could not load app setting: {e}"))
+}
+
+#[command]
+fn set_app_setting(app: tauri::AppHandle, key: String, value: String) -> Result<(), String> {
+    if key.trim().is_empty() || key.len() > 128 {
+        return Err("setting key must be between 1 and 128 characters".into());
+    }
+    if value.len() > 4096 {
+        return Err("setting value is too long".into());
+    }
+    let conn = open_app_db(&app)?;
+    conn.execute(
+        "INSERT INTO app_settings (setting_key, setting_value, updated_at) VALUES (?1, ?2, ?3)
+         ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value, updated_at = excluded.updated_at",
+        rusqlite::params![key, value, now_secs()?],
+    )
+    .map_err(|e| format!("could not save app setting: {e}"))?;
     Ok(())
 }
 
@@ -1419,6 +1459,8 @@ pub fn run() {
         .plugin(tauri_plugin_sql::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            get_app_setting,
+            set_app_setting,
             parse_character,
             parse_stash,
             scan_characters,

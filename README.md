@@ -14,6 +14,7 @@ D2 Assistant helps organize classic Diablo II items and move selected gear back 
 - **Bulk selection:** refine results with multiple filters, select visible items, and keep selections while changing filters.
 - **Safer transfers:** move selected items into a chosen character's inventory or personal stash. The app backs up the selected save, updates it in place, and validates the result so it does not create duplicate character files.
 - **Character overview:** read local character saves and compare known item class/level requirements with a transfer target.
+- **Persistent setup:** remember the selected game-save folder in D2 Assistant's local settings database across app restarts and updates.
 - **Character Lab:** view classic skill trees and reallocate skill and attribute points without increasing points the character has earned. Writes are backed up and limited to validated classic LoD version 96 saves.
 - **Runeword reference:** browse ordered runes, sockets, bases, and bonuses offline. Standard LoD recipes are shown by default; optional D2R/Reign references are clearly marked and can be hidden.
 
@@ -43,7 +44,7 @@ If an installer is missing for your platform, that platform's release build has 
 ## First run
 
 1. Launch D2 Assistant.
-2. On **Characters**, choose your Diablo II save folder with **Browse…**. The selection is saved locally on this computer.
+2. On **Characters**, choose your Diablo II save folder with **Browse…**. The selection is saved in the app's local settings database on this computer and restored on later launches.
 3. Open **Bank** and choose a `.d2x` file only when you intend to back it up, move all its items into the bank, and empty that stash file.
 4. Search and filter the bank, then select items and choose a character and destination.
 5. Check the updated character in game. The app keeps versioned character backups and a verified stash backup.
