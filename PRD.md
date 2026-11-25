@@ -26,7 +26,7 @@ D2 Assistant is a local desktop item bank and transfer helper for offline charac
 ## Safety requirements
 
 - Show the selected source path and explain that a full stash import creates a verified backup and empties the selected stash after import.
-- Never write to an original character save. Export only to `_d2a` paths.
+- Character exports write only to `_d2a` paths. Replacing a selected save during an explicit restore requires a confirmation and a verified pre-restore backup.
 - Back up an existing app-generated file before replacing it.
 - Validate generated saves before reporting success.
 - Clearly show unknown item requirements instead of guessing.
@@ -38,10 +38,19 @@ D2 Assistant is a local desktop item bank and transfer helper for offline charac
 - Welcome contributions from people and coding agents under the same quality bar. See `CONTRIBUTING.md`.
 - Optional features are registered as local feature flags with a description, default state, and compatibility notes.
 
+## Next version — character backup history and restore
+
+- Add a local preference for automatic versioned character-save backups; enabled by default.
+- On app start and character-folder refresh, detect changed selected `.d2s` saves by checksum and create one timestamped, checksum-verified backup for each new version; repeated scans must not create duplicate snapshots.
+- Create a verified pre-change backup before every app operation that writes or restores a character save.
+- Show each character's backup history with timestamp, file size, and verification status.
+- Let users preview and restore a selected version with a clear confirmation. Before restoring over a save, preserve the current version, write atomically, and validate the restored save.
+- Let users disable automatic versioned backups in local settings while keeping pre-restore safety backups mandatory.
+- Keep snapshots local, provide a clear backup folder location, and document storage use and retention controls.
+
 ## Future work
 
 - Improve item-property and requirement decoding.
-- Complete configurable backups and restore.
 - Add user-controlled experimental feature sets.
 - Invite community contributors with current D2R installs to design and validate separate D2R offline-save support.
 - Explore a local item fingerprint and duplicate-screening utility for item data users provide, with confidence and false-positive limits shown.

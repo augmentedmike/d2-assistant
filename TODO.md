@@ -5,7 +5,6 @@ This is the public project task list. Completed work is recorded in `CHANGELOG.m
 ## Release follow-up
 
 - [ ] Improve decoding for magical, rare, set, unique, crafted, and runeword item requirements.
-- [ ] Complete configurable character/stash backup and restore.
 - [ ] Add starter build knowledge and build-aware item matching.
 - [ ] Add a broader, sanitized fixture set for supported classic save formats.
 - [ ] Invite current-release D2R players to help design/validate a separate D2R offline-save adapter and item tables.
@@ -15,7 +14,7 @@ This is the public project task list. Completed work is recorded in `CHANGELOG.m
 - [ ] Review accessibility, keyboard use, and small-window layouts.
 - [ ] Add code signing and notarization if credentials become available.
 
-## Next version — skill trees and character editing
+## Next version — character editing and backup recovery
 
 - [ ] Add class skill trees with current allocations, prerequisites, and unspent points.
 - [ ] Allow skill allocation/editing and reset/reallocation with point-total validation.
@@ -23,6 +22,11 @@ This is the public project task list. Completed work is recorded in `CHANGELOG.m
 - [ ] Allow editing carried gold within the save format's legal limit.
 - [ ] Gate the editor behind a local experimental feature flag; show a review and require confirmation before any write.
 - [ ] Write only validated `_d2a` copies and back up prior outputs; never modify originals.
+- [ ] Add automatic, versioned character-save backups behind a local setting that defaults on.
+- [ ] Detect changed saves by checksum on app start and folder refresh; save one timestamped, verified snapshot per new version.
+- [ ] Add character backup history with timestamps and verification status.
+- [ ] Add confirmed restore with a verified backup of the current save, atomic write, and post-restore validation.
+- [ ] Add local retention controls and disclose backup storage location.
 
 ## Future platform / product ideas
 

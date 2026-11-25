@@ -73,10 +73,9 @@ This project currently builds for macOS on the development machine. Windows and 
 
 ## Roadmap
 
-- **Next version:** add class skill trees and an opt-in character editor for skill allocation/reset, attribute allocation/reset, and character gold.
+- **Next version:** add class skill trees and an opt-in character editor for skill allocation/reset, attribute allocation/reset, and character gold. Add default-on automatic versioned character-save backups with history and confirmed restore.
 - Invite D2R contributors to bring current-version save-format knowledge and sanitized fixtures; explore local fingerprint analysis for duplicate screening without connecting to Battle.net.
 - Improve item-property and requirement decoding.
-- Add a more complete backup and restore workflow.
 - Add optional, user-controlled experimental features.
 - Investigate Android as a future target after the desktop save workflow is stable. Android is not supported in this release.
 - A peer-to-peer marketplace for offline LoD items is deferred; it is not part of this release.
