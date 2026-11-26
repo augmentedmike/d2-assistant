@@ -7,10 +7,11 @@ use crate::grid::{find_grid_space, mark_grid};
 use crate::{capture_character_backup, now_secs, unique_sidecar_path, update_character_save_state};
 use ::d2s::{
     BodyLocation, D2Save, Item, ItemMode, ItemPosition, StorePage, TxtData,
-    bits::BitReader,
+    bits::{BitReader, BitWriter},
     data::{ExternalData, GameTable},
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::command;
@@ -23,6 +24,33 @@ pub struct BankImportResult {
     backup_path: Option<String>,
     source_cleared: bool,
     source_warning: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CharacterStorageItem {
+    item_index: usize,
+    code: String,
+    name: String,
+    seed: u32,
+    fingerprint: String,
+    x: u8,
+    y: u8,
+    width: u8,
+    height: u8,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CharacterItemSelection {
+    item_index: usize,
+    code: String,
+    seed: u32,
+    fingerprint: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CharacterStorageItems {
+    inventory: Vec<CharacterStorageItem>,
+    stash: Vec<CharacterStorageItem>,
 }
 
 #[command]
@@ -267,6 +295,358 @@ pub fn bank_import_stash_items(
         source_cleared,
         source_warning,
     })
+}
+
+/// Read the actual item boxes in a character's carried inventory and private stash.
+#[command]
+pub fn character_storage_items(character_path: String) -> Result<CharacterStorageItems, String> {
+    let bytes = fs::read(&character_path)
+        .map_err(|e| format!("could not read character save {character_path}: {e}"))?;
+    let save =
+        D2Save::from_bytes(&bytes).map_err(|e| format!("could not decode character save: {e}"))?;
+    let txt = TxtData::embedded();
+    let mut inventory = Vec::new();
+    let mut stash = Vec::new();
+    for (item_index, item) in save.items.0.iter().enumerate() {
+        if item.position.mode != ItemMode::Stored
+            || !matches!(
+                item.position.store_page,
+                StorePage::Inventory | StorePage::Stash
+            )
+        {
+            continue;
+        }
+        let info = txt.item_info(item.code, save.version).map_err(|e| {
+            format!(
+                "could not size {} in character storage: {e}",
+                item.code_string()
+            )
+        })?;
+        let (name, _) = bank_base_details(&item.code_string(), txt);
+        let storage_item = CharacterStorageItem {
+            item_index,
+            code: item.code_string(),
+            name,
+            seed: item.seed,
+            fingerprint: item_selection_fingerprint(item, txt, save.version)?,
+            x: item.position.inv_x,
+            y: item.position.inv_y,
+            width: info.inv_width.unwrap_or(1),
+            height: info.inv_height.unwrap_or(1),
+        };
+        match item.position.store_page {
+            StorePage::Inventory
+                if storage_item.x + storage_item.width <= 10
+                    && storage_item.y + storage_item.height <= 4 =>
+            {
+                inventory.push(storage_item)
+            }
+            StorePage::Stash
+                if storage_item.x + storage_item.width <= 6
+                    && storage_item.y + storage_item.height <= 8 =>
+            {
+                stash.push(storage_item)
+            }
+            StorePage::Inventory | StorePage::Stash => {
+                return Err(format!(
+                    "{} has an invalid saved storage position; no deposit is available",
+                    item.code_string()
+                ));
+            }
+            _ => unreachable!(),
+        }
+    }
+    Ok(CharacterStorageItems { inventory, stash })
+}
+
+/// Move selected complete item records from a character's private stash or inventory to the bank.
+#[command]
+pub fn bank_deposit_character_items(
+    app: tauri::AppHandle,
+    character_path: String,
+    source: String,
+    selected_items: Vec<CharacterItemSelection>,
+) -> Result<usize, String> {
+    let store_page = match source.as_str() {
+        "stash" => StorePage::Stash,
+        "inventory" => StorePage::Inventory,
+        _ => return Err("source must be stash or inventory".into()),
+    };
+    if selected_items.is_empty() {
+        return Err("select at least one character item to move".into());
+    }
+    let selected_count = selected_items.len();
+    let selected_by_index: std::collections::HashMap<_, _> = selected_items
+        .into_iter()
+        .map(|selection| {
+            (
+                selection.item_index,
+                (selection.code, selection.seed, selection.fingerprint),
+            )
+        })
+        .collect();
+    if selected_by_index.len() != selected_count {
+        return Err("the selected character item list contains duplicate indexes".into());
+    }
+    let path = PathBuf::from(&character_path);
+    let original_bytes = fs::read(&path)
+        .map_err(|e| format!("could not read character save {}: {e}", path.display()))?;
+    let mut save = D2Save::from_bytes(&original_bytes)
+        .map_err(|e| format!("could not decode character save: {e}"))?;
+    if save.version != 96 {
+        return Err(format!(
+            "character save version {} is not supported for item deposits",
+            save.version
+        ));
+    }
+    let original_item_count = save.items.0.len();
+    let txt = TxtData::embedded();
+    let mut records = Vec::new();
+    let mut remaining = Vec::with_capacity(original_item_count);
+    for (item_index, item) in std::mem::take(&mut save.items.0).into_iter().enumerate() {
+        if let Some((expected_code, expected_seed, expected_fingerprint)) =
+            selected_by_index.get(&item_index)
+        {
+            if item.position.mode != ItemMode::Stored || item.position.store_page != store_page {
+                return Err("selected item no longer occupies the requested storage page; refresh the character view".into());
+            }
+            if item.code_string() != *expected_code
+                || item.seed != *expected_seed
+                || item_selection_fingerprint(&item, txt, save.version)? != *expected_fingerprint
+            {
+                return Err(
+                    "a selected item changed since the grid was loaded; refresh the character view"
+                        .into(),
+                );
+            }
+            let mut item_data = Vec::new();
+            item.write(&mut BitWriter::new(&mut item_data), txt, save.version)
+                .map_err(|e| {
+                    format!("could not encode {} for the bank: {e}", item.code_string())
+                })?;
+            let (level_req, class_req) = crate::d2x::requirements_from_item_record(&item_data)?;
+            records.push((item, item_data, level_req, class_req));
+        } else {
+            remaining.push(item);
+        }
+    }
+    if records.len() != selected_by_index.len() {
+        return Err(
+            "some selected items no longer exist in the character save; refresh the character view"
+                .into(),
+        );
+    }
+    let mut fingerprints = std::collections::HashSet::new();
+    for (item, _, _, _) in &records {
+        if item.seed != 0 && !fingerprints.insert((item.code_string(), item.seed)) {
+            return Err(format!(
+                "{} appears more than once with the same fingerprint in this {source}; character left unchanged",
+                item.code_string()
+            ));
+        }
+    }
+
+    // Detect bank conflicts before creating a character version; failed/no-op deposits
+    // must not add backup history entries.
+    let check_conn = open_app_db(&app)?;
+    let bank_records = {
+        let mut statement = check_conn
+            .prepare("SELECT item_data, transferred_to FROM bank_items WHERE item_data IS NOT NULL")
+            .map_err(|e| format!("could not inspect bank fingerprints: {e}"))?;
+        statement
+            .query_map([], |row| {
+                Ok((row.get::<_, Vec<u8>>(0)?, row.get::<_, Option<String>>(1)?))
+            })
+            .map_err(|e| format!("could not read bank fingerprints: {e}"))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| format!("could not read bank fingerprints: {e}"))?
+    };
+    for (item, _, _, _) in &records {
+        if item.seed == 0 {
+            continue;
+        }
+        let code = item.code_string();
+        let conflicting_duplicate = bank_records
+            .iter()
+            .filter_map(|(data, transferred_to)| {
+                let mut reader = BitReader::new(data);
+                let bank_item = Item::read(&mut reader, txt, save.version).ok()?;
+                (bank_item.code_string() == code && bank_item.seed == item.seed)
+                    .then_some(transferred_to.as_deref())
+            })
+            .any(|target| target != Some(character_path.as_str()));
+        if conflicting_duplicate {
+            return Err(format!(
+                "{} already exists in the bank by item fingerprint; character left unchanged",
+                code
+            ));
+        }
+    }
+    drop(check_conn);
+
+    // Do not change the save until its versioned backup is verified.
+    capture_character_backup(&app, &path, true)?
+        .ok_or_else(|| "could not create a verified character backup".to_string())?;
+    let conn = open_app_db(&app)?;
+    let tx = conn
+        .unchecked_transaction()
+        .map_err(|e| format!("could not start character deposit: {e}"))?;
+    let stat_names = txt
+        .table(GameTable::ItemStatCost, save.version)
+        .map_err(|e| format!("could not load item stat names: {e}"))?
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .skip(1)
+        .map(|line| line.split('\t').next().unwrap_or("").to_string())
+        .collect::<Vec<_>>();
+    let existing = {
+        let mut statement = tx
+            .prepare(
+                "SELECT id, item_data, transferred_to FROM bank_items WHERE item_data IS NOT NULL",
+            )
+            .map_err(|e| format!("could not inspect bank fingerprints: {e}"))?;
+        statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, Vec<u8>>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                ))
+            })
+            .map_err(|e| format!("could not read bank fingerprints: {e}"))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| format!("could not read bank fingerprints: {e}"))?
+    };
+    let now = now_secs()?;
+    let source_character = path
+        .file_stem()
+        .and_then(|name| name.to_str())
+        .unwrap_or("Character");
+    for (item, item_data, level_req, class_req) in &records {
+        let code = item.code_string();
+        let duplicate = (item.seed != 0)
+            .then(|| {
+                existing.iter().find_map(|(id, data, transferred_to)| {
+                    let mut reader = BitReader::new(data);
+                    let bank_item = Item::read(&mut reader, txt, save.version).ok()?;
+                    (bank_item.code_string() == code && bank_item.seed == item.seed)
+                        .then_some((*id, transferred_to.as_deref()))
+                })
+            })
+            .flatten();
+        if let Some((id, Some(target))) = duplicate
+            && target == character_path
+        {
+            tx.execute(
+                "UPDATE bank_items SET transferred_to=NULL, source_character=?1, banked_at=?2, updated_at=?2, item_data=?3, requirements_decoded=1 WHERE id=?4",
+                rusqlite::params![source_character, now, item_data, id],
+            ).map_err(|e| format!("could not return {} to the bank: {e}", code))?;
+            continue;
+        }
+        if duplicate.is_some() {
+            return Err(format!(
+                "{} already exists in the bank by item fingerprint; character left unchanged",
+                code
+            ));
+        }
+
+        let (base_name, item_type) = bank_base_details(&code, txt);
+        let mut values = vec![
+            format!("Type: {item_type}"),
+            format!("D2 item code: {code}"),
+            format!("Rarity: {:?}", item.quality),
+            if item.flags.contains(d2s::ItemFlags::IDENTIFIED) {
+                "Identified"
+            } else {
+                "Unidentified"
+            }
+            .to_string(),
+            if item.flags.contains(d2s::ItemFlags::ETHEREAL) {
+                "Ethereal"
+            } else {
+                "Non-ethereal"
+            }
+            .to_string(),
+            "Original item record retained for transfer".into(),
+        ];
+        for stat in &item.stats {
+            let name = stat_names
+                .get(stat.id.0 as usize)
+                .map(String::as_str)
+                .unwrap_or("unknown stat");
+            let shift = txt
+                .stat_info(stat.id, save.version)
+                .map(|info| info.val_shift)
+                .unwrap_or(0);
+            let layer = if stat.layer == 0 {
+                String::new()
+            } else {
+                format!(" (layer {})", stat.layer)
+            };
+            values.push(format!(
+                "{} {:+}{}",
+                display_stat_name(name),
+                stat.value >> shift,
+                layer
+            ));
+        }
+        let metadata = serde_json::to_string(&values)
+            .map_err(|e| format!("could not encode {} details: {e}", code))?;
+        let item_hash = format!("{:x}", Sha256::digest(item_data));
+        let path_hash = format!("{:x}", Sha256::digest(path.to_string_lossy().as_bytes()));
+        let source_key = format!("D2S:{path_hash}:{item_hash}");
+        tx.execute(
+            "INSERT INTO bank_items (base_item, affixes_json, level_req, class_req, sockets, icon_path, source_character, banked_at, updated_at, item_data, source_key, requirements_decoded)
+             VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, ?7, ?8, ?9, 1)",
+            rusqlite::params![base_name, metadata, level_req, class_req, item.sockets.len() as i32, source_character, now, item_data, source_key],
+        ).map_err(|e| format!("could not add {} to the bank: {e}", code))?;
+    }
+
+    save.items.0 = remaining;
+    let output_bytes = save
+        .to_bytes()
+        .map_err(|e| format!("could not encode updated character: {e}"))?;
+    let verified = D2Save::from_bytes(&output_bytes)
+        .map_err(|e| format!("updated character failed validation: {e}"))?;
+    if verified.items.len() + records.len() != original_item_count {
+        return Err(
+            "updated character failed item-count verification; source left unchanged".into(),
+        );
+    }
+    let temp_path = unique_sidecar_path(&path, "deposit-tmp", now);
+    fs::write(&temp_path, &output_bytes)
+        .map_err(|e| format!("could not stage updated character: {e}"))?;
+    if fs::read(&temp_path).ok() != Some(output_bytes.clone()) {
+        let _ = fs::remove_file(&temp_path);
+        return Err("updated character byte verification failed".into());
+    }
+    fs::rename(&temp_path, &path).map_err(|e| format!("could not save updated character: {e}"))?;
+    if let Err(error) = tx.commit() {
+        let restore_path = unique_sidecar_path(&path, "deposit-restore", now);
+        let restore_result = (|| -> std::io::Result<()> {
+            fs::write(&restore_path, &original_bytes)?;
+            fs::rename(&restore_path, &path)
+        })();
+        return Err(format!(
+            "could not commit bank deposit: {error}{}",
+            restore_result
+                .err()
+                .map(|e| format!("; restoring the original character also failed: {e}"))
+                .unwrap_or_default()
+        ));
+    }
+    update_character_save_state(&app, &path, &output_bytes)?;
+    Ok(records.len())
+}
+
+fn item_selection_fingerprint(item: &Item, txt: &TxtData, version: u32) -> Result<String, String> {
+    let mut normalized = item.clone();
+    normalized.position = ItemPosition::default();
+    let mut bytes = Vec::new();
+    normalized
+        .write(&mut BitWriter::new(&mut bytes), txt, version)
+        .map_err(|error| format!("could not fingerprint {}: {error}", item.code_string()))?;
+    Ok(format!("{:x}", Sha256::digest(bytes)))
 }
 
 fn bank_base_details(code: &str, txt: &TxtData) -> (String, String) {

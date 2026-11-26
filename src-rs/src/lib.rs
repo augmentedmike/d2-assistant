@@ -8,7 +8,8 @@ mod items;
 
 use ::d2s::{D2Save, StatId};
 use bank_commands::{
-    bank_add_item, bank_delete_item, bank_export_items, bank_get_items, bank_import_stash_items,
+    bank_add_item, bank_delete_item, bank_deposit_character_items, bank_export_items,
+    bank_get_items, bank_import_stash_items, character_storage_items,
 };
 use d2s::{CharacterData, parse_d2s};
 use d2x::{StashData, parse_d2x};
@@ -763,6 +764,7 @@ pub fn run() {
             set_app_setting,
             parse_character,
             parse_stash,
+            character_storage_items,
             scan_characters,
             character_backup_history,
             character_restore_backup,
@@ -773,6 +775,7 @@ pub fn run() {
             bank_delete_item,
             bank_get_items,
             bank_import_stash_items,
+            bank_deposit_character_items,
             bank_export_items,
         ])
         .run(tauri::generate_context!())

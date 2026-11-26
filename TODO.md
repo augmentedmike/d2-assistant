@@ -4,6 +4,8 @@ This is the public project task list. Completed work is recorded in `CHANGELOG.m
 
 ## Release follow-up
 
+- [x] Split character details into Overview, Items, Skills & stats, and Backups tabs; show bundled classic item icons in character storage and equipment views.
+- [x] Show a character's inventory and private stash as item grids; allow selecting individual items to deposit into the shared bank with a verified backup and in-place save update.
 - [ ] Pin GitHub Actions to immutable commit SHAs and enable Dependabot for Bun, Cargo, and GitHub Actions.
 - [ ] Add recurring secret and dependency vulnerability scans to CI, with an explicit policy for upstream unmaintained/unsound warnings.
 - [ ] Verify production CSP and IPC/dialog/image behavior in macOS, Windows, and Linux bundles.

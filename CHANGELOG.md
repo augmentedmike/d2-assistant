@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Changed bank search to update on each keystroke and match short terms at item-name/code word boundaries; added regression coverage for `tir`, `tal`, `eth`, item codes, and the “Crystal Sword” false match.
+- Added dedicated character tabs for Overview, Items, Skills & stats, and Backups; the character view now uses more of the available width and keeps skill editing and backup history out of the overview.
+- Reworked the global header into separate responsive navigation and page-action rows, and kept skill and attribute summaries stacked until there is enough room for two columns.
+- Added 470 transparent classic inventory sprite PNGs with a version 96 item-code mapping. Bank cards, character inventory/stash boxes, and equipped-item rows now show the original item art. Documented game-art ownership and conversion inputs in `docs/ITEM-ICONS.md`.
+- Render classic item sprites with nearest-neighbor scaling so their native pixel art stays crisp at UI sizes.
+- Added character inventory and private stash grids with per-item selection and selective moves into the shared bank. Deposits create a verified versioned backup, remove only selected records from the original save in place, validate the result, and check nonzero item seeds against the bank to avoid duplicate transfers.
+- Made available bank items the default view and marked transferred history records as unavailable.
 - Hardened the Tauri WebView with a restrictive production CSP, a separate localhost-only Vite development CSP, and prototype freezing. Removed unused Tauri SQL/log plugins and the unneeded SQL frontend permission. Upgraded rusqlite to 0.41.1 to resolve the bundled SQLite memory-disclosure advisory; documented the full security review and remaining upstream/release hardening items in `docs/SECURITY-REVIEW.md`.
 - Refactored Rust persistence and bank transfer commands out of the Tauri entry module, extracted grid placement into a dedicated module, and removed unused parser fields/helpers.
 - Extracted bank item metadata, attributes, compatibility, filtering, and gold validation from the main React component into tested pure functions; metadata is parsed once per bank refresh and reused by filters and cards.

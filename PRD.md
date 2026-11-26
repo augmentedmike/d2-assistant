@@ -20,13 +20,15 @@ D2 Assistant is a local desktop item bank and transfer helper for offline charac
 3. Back up and import items from supported stashes into a searchable local bank.
 4. Filter by item type, rarity, class/level requirements, sockets, and transfer status.
 5. Keep multi-selection while refining filters and transfer selected items to a chosen character inventory or personal stash.
-6. Back up the selected character save before any edit or item transfer, update that save in place, and validate the result to avoid generating duplicate character files.
-7. Browse offline runeword recipes with ordered runes, sockets, valid bases, effects, and availability labels.
-8. Let users opt into or out of optional feature sets locally through the Features screen. Extended D2R/Reign recipe references are off by default; safety behavior cannot be disabled.
+6. Show each character's 10×4 carried inventory and 6×8 private stash as item grids; let users select individual item boxes and move only those items into the shared bank.
+7. Back up the selected character save before any edit or item transfer, update that save in place, and validate the result to avoid generating duplicate character files.
+8. Browse offline runeword recipes with ordered runes, sockets, valid bases, effects, and availability labels.
+9. Let users opt into or out of optional feature sets locally through the Features screen. Extended D2R/Reign recipe references are off by default; safety behavior cannot be disabled.
 
 ## Safety requirements
 
 - Show the selected source path and explain that a full stash import creates a verified backup and empties the selected stash after import.
+- Character-to-bank deposits are selective: show inventory/stash grids, move only explicitly selected items, create a verified versioned backup, validate the updated save, and update the character in place.
 - Gold edits and bank item transfers update the selected character save in place only after a verified backup. Restoring a backup requires confirmation and creates a verified pre-restore backup.
 - Back up an existing app-generated file before replacing it.
 - Validate generated saves before reporting success.

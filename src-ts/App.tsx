@@ -2,14 +2,18 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
 import Runewords from './Runewords'
 import CharacterBuildEditor from './CharacterBuildEditor'
+import CharacterStorageGrid from './CharacterStorageGrid'
+import { classicItemIcon } from './itemIcons'
 import { bankItemDetails, filterBankItems, itemCompatibility, validateGoldDrafts } from './bankItemPresentation'
 import type { Compatibility } from './bankItemPresentation'
 import {
   scanCharacters,
   parseCharacter,
+  characterStorageItems,
   bankGetItems,
   bankDeleteItem,
   bankImportStashItems,
+  bankDepositCharacterItems,
   bankExportItems,
   characterBackupHistory,
   characterRestoreBackup,
@@ -22,6 +26,7 @@ import type {
   CharacterData,
   CharacterBackupVersion,
   BankItem,
+  CharacterStorageItems,
 } from './lib/tauri'
 
 const CLASS_COLORS: Record<string, string> = {
@@ -44,6 +49,7 @@ function formatWhen(epochSecs: number): string {
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('characters')
+  const [characterSubtab, setCharacterSubtab] = useState<'overview' | 'items' | 'skills' | 'backups'>('overview')
   const [saveDir, setSaveDir] = useState('')
   const [settingsLoaded, setSettingsLoaded] = useState(false)
   const [showExtendedRecipes, setShowExtendedRecipes] = useState(() => localStorage.getItem('d2-assistant.extended-recipes') === 'true')
@@ -52,6 +58,8 @@ export default function App() {
   const [characters, setCharacters] = useState<CharacterListing[]>([])
   const [selected, setSelected] = useState<CharacterListing | null>(null)
   const [characterData, setCharacterData] = useState<CharacterData | null>(null)
+  const [characterStorage, setCharacterStorage] = useState<CharacterStorageItems>({ inventory: [], stash: [] })
+  const [characterStorageSelection, setCharacterStorageSelection] = useState<{ inventory: Set<number>; stash: Set<number> }>({ inventory: new Set(), stash: new Set() })
   const [characterBackups, setCharacterBackups] = useState<CharacterBackupVersion[]>([])
   const [showAllCharacterBackups, setShowAllCharacterBackups] = useState(false)
   const [carriedGoldDraft, setCarriedGoldDraft] = useState('')
@@ -66,7 +74,7 @@ export default function App() {
   const [bankTypeFilter, setBankTypeFilter] = useState('')
   const [bankClassFilter, setBankClassFilter] = useState('')
   const [bankRarityFilter, setBankRarityFilter] = useState('')
-  const [bankTransferFilter, setBankTransferFilter] = useState<'all' | 'available' | 'transferred'>('all')
+  const [bankTransferFilter, setBankTransferFilter] = useState<'all' | 'available' | 'transferred'>('available')
   const [bankMatchFilter, setBankMatchFilter] = useState<'all' | Compatibility>('all')
   const [minLevelFilter, setMinLevelFilter] = useState('')
   const [maxLevelFilter, setMaxLevelFilter] = useState('')
@@ -202,15 +210,22 @@ export default function App() {
   const handleSelect = async (char: CharacterListing) => {
     selectedCharacterPath.current = char.path
     setSelected(char)
+    setCharacterSubtab('overview')
+    setCharacterData(null)
+    setCharacterBackups([])
+    setCharacterStorage({ inventory: [], stash: [] })
+    setCharacterStorageSelection({ inventory: new Set(), stash: new Set() })
     setLoading(true)
     setError(null)
     try {
-      const [data, versions] = await Promise.all([
+      const [data, versions, storage] = await Promise.all([
         parseCharacter(char.path),
         characterBackupHistory(char.path),
+        characterStorageItems(char.path),
       ])
       setCharacterData(data)
       setCharacterBackups(versions)
+      setCharacterStorage(storage)
       setCarriedGoldDraft(String(data.gold))
       setStashGoldDraft(String(data.stash_gold))
       setShowAllCharacterBackups(false)
@@ -218,6 +233,7 @@ export default function App() {
       setError(err instanceof Error ? err.message : String(err))
       setCharacterData(null)
       setCharacterBackups([])
+      setCharacterStorage({ inventory: [], stash: [] })
       setCarriedGoldDraft('')
       setStashGoldDraft('')
     } finally {
@@ -322,6 +338,26 @@ export default function App() {
     }
   }
 
+  const handleDepositCharacterItems = async (source: 'stash' | 'inventory') => {
+    if (!selected) return
+    const sourceLabel = source === 'stash' ? 'private stash' : 'inventory'
+    const selection = characterStorage[source].filter((item) => characterStorageSelection[source].has(item.item_index))
+    if (selection.length === 0) return
+    if (!window.confirm(`Move ${selection.length} selected item${selection.length === 1 ? '' : 's'} from ${selected.name}'s ${sourceLabel} to the shared bank? A verified versioned backup will be created first, then only these items will be removed from this character.`)) return
+    setLoading(true)
+    setError(null)
+    setNotice(null)
+    try {
+      const count = await bankDepositCharacterItems(selected.path, source, selection.map(({ item_index, code, seed, fingerprint }) => ({ item_index, code, seed, fingerprint })))
+      await Promise.all([loadBank(), handleSelect(selected)])
+      setNotice(`Moved ${count} item${count === 1 ? '' : 's'} from ${selected.name}'s ${sourceLabel} to the shared bank. A verified character backup was created.`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleExportSelected = async () => {
     if (!transferCharacterPath) {
       setError('Scan for a character before transferring items.')
@@ -372,7 +408,7 @@ export default function App() {
     setBankTypeFilter('')
     setBankClassFilter('')
     setBankRarityFilter('')
-    setBankTransferFilter('all')
+    setBankTransferFilter('available')
     setBankMatchFilter('all')
     setMinLevelFilter('')
     setMaxLevelFilter('')
@@ -398,10 +434,10 @@ export default function App() {
 
   return (
     <div className="flex h-screen flex-col bg-neutral-950 text-white">
-      <header className="h-12 bg-neutral-900 border-b border-neutral-800 flex items-center justify-between px-4">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2"><img src="/brand.png" alt="" className="h-8 w-8 rounded-full object-cover" /><h1 className="text-lg font-semibold tracking-wide">D2 Assistant</h1></div>
-          <nav className="flex gap-1">
+      <header className="flex shrink-0 flex-col border-b border-neutral-800 bg-neutral-900 px-4 py-2">
+        <div className="flex min-h-10 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="flex shrink-0 items-center gap-2"><img src="/brand.png" alt="" className="h-8 w-8 rounded-full object-cover" /><h1 className="flex-none whitespace-nowrap text-lg font-semibold tracking-wide">D2 Assistant</h1></div>
+          <nav className="flex flex-wrap gap-1">
             {(
               [
                 ['characters', 'Characters'],
@@ -428,26 +464,26 @@ export default function App() {
           </nav>
         </div>
         {tab === 'characters' ? (
-          <div className="flex items-center gap-4">
+          <div className="mt-2 flex w-full min-w-0 items-center gap-2">
             <input
               type="text"
               placeholder={settingsLoaded ? 'Choose Diablo II save folder' : 'Restoring saved game location…'}
               value={saveDir}
               onChange={(e) => setSaveDir(e.target.value)}
               disabled={!settingsLoaded}
-              className="text-sm bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-white focus:outline-none focus:border-red-700 w-96"
+              className="min-w-0 flex-1 text-sm bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-white focus:outline-none focus:border-red-700"
             />
-            <button onClick={() => void chooseSaveDirectory()} disabled={!settingsLoaded} className="text-sm bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 px-3 py-1 rounded">Browse…</button>
+            <button onClick={() => void chooseSaveDirectory()} disabled={!settingsLoaded} className="shrink-0 text-sm bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 px-3 py-1 rounded">Browse…</button>
             <button
               onClick={() => void loadCharacters()}
               disabled={!settingsLoaded || loading || !saveDir}
-              className="text-sm bg-red-800 hover:bg-red-700 disabled:opacity-50 px-3 py-1 rounded"
+              className="shrink-0 text-sm bg-red-800 hover:bg-red-700 disabled:opacity-50 px-3 py-1 rounded"
             >
               {loading ? 'Scanning...' : 'Scan'}
             </button>
           </div>
         ) : tab === 'bank' ? (
-          <div className="flex items-center gap-2">
+          <div className="mt-2 flex w-full items-center justify-end gap-2">
             <button
               onClick={() => void handleImportStashItems()}
               disabled={loading}
@@ -537,7 +573,7 @@ export default function App() {
                 </p>
               </div>
             ) : (
-              <div className="max-w-2xl">
+              <div className="mx-auto max-w-6xl">
                 <div className="flex justify-between items-start mb-6">
                   <div>
                     <h1 className="text-2xl font-bold text-white">{selected.name}</h1>
@@ -563,8 +599,58 @@ export default function App() {
                   </button>
                 </div>
 
+                <nav aria-label="Character sections" className="mb-6 flex gap-1 overflow-x-auto border-b border-neutral-800">
+                  {([
+                    ['overview', 'Overview'],
+                    ['items', `Items · ${characterStorage.inventory.length + characterStorage.stash.length}`],
+                    ['skills', 'Skills & stats'],
+                    ['backups', `Backups · ${characterBackups.length}`],
+                  ] as const).map(([key, label]) => (
+                    <button key={key} onClick={() => setCharacterSubtab(key)} className={`shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${characterSubtab === key ? 'border-red-600 text-amber-100' : 'border-transparent text-gray-400 hover:text-white'}`} aria-current={characterSubtab === key ? 'page' : undefined}>
+                      {label}
+                    </button>
+                  ))}
+                </nav>
+
                 {characterData ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <>
+                  {characterSubtab === 'items' && <div className="mb-6 space-y-4">
+                    <CharacterStorageGrid
+                      title="Inventory (10 × 4)"
+                      columns={10}
+                      rows={4}
+                      items={characterStorage.inventory}
+                      selected={characterStorageSelection.inventory}
+                      loading={loading}
+                      onToggle={(itemIndex) => setCharacterStorageSelection((previous) => {
+                        const inventory = new Set(previous.inventory)
+                        if (inventory.has(itemIndex)) inventory.delete(itemIndex)
+                        else inventory.add(itemIndex)
+                        return { ...previous, inventory }
+                      })}
+                      onMoveSelected={() => void handleDepositCharacterItems('inventory')}
+                      onSelectAll={() => setCharacterStorageSelection((previous) => ({ ...previous, inventory: new Set(characterStorage.inventory.map((item) => item.item_index)) }))}
+                      onClear={() => setCharacterStorageSelection((previous) => ({ ...previous, inventory: new Set() }))}
+                    />
+                    <CharacterStorageGrid
+                      title="Private stash (6 × 8)"
+                      columns={6}
+                      rows={8}
+                      items={characterStorage.stash}
+                      selected={characterStorageSelection.stash}
+                      loading={loading}
+                      onToggle={(itemIndex) => setCharacterStorageSelection((previous) => {
+                        const stash = new Set(previous.stash)
+                        if (stash.has(itemIndex)) stash.delete(itemIndex)
+                        else stash.add(itemIndex)
+                        return { ...previous, stash }
+                      })}
+                      onMoveSelected={() => void handleDepositCharacterItems('stash')}
+                      onSelectAll={() => setCharacterStorageSelection((previous) => ({ ...previous, stash: new Set(characterStorage.stash.map((item) => item.item_index)) }))}
+                      onClear={() => setCharacterStorageSelection((previous) => ({ ...previous, stash: new Set() }))}
+                    />
+                  </div>}
+                  {characterSubtab === 'overview' && <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-4">
                       <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
                         Attributes
@@ -696,7 +782,9 @@ export default function App() {
                         </div>
                       </div>
                     </div>
+                  </div>}
 
+                  {characterSubtab === 'skills' && <div className="space-y-4">
                     {!loading && enableCharacterEditor && <CharacterBuildEditor
                       key={selected.path}
                       selected={selected}
@@ -718,7 +806,9 @@ export default function App() {
                       }}
                     />}
                     {!loading && !enableCharacterEditor && <section className="md:col-span-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4"><h2 className="text-sm font-semibold uppercase tracking-wider text-amber-200">Skills & character points</h2><p className="mt-2 text-sm text-gray-400">Character editing is turned off. Enable it under Features to edit skill trees and attribute points.</p></section>}
+                  </div>}
 
+                  {characterSubtab === 'backups' && <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-4">
                       <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">
                         File
@@ -773,8 +863,9 @@ export default function App() {
                         </button>
                       )}
                     </section>
+                  </div>}
 
-                    <section className="md:col-span-2 bg-neutral-900 border border-neutral-800 rounded-lg p-4">
+                    {characterSubtab === 'overview' && <section className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
                       <div className="flex items-start justify-between gap-4 mb-3">
                         <div>
                           <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
@@ -794,9 +885,14 @@ export default function App() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {characterData.equipped_items.map((item) => (
                             <div key={`${item.slot}-${item.code}`} className="flex items-start justify-between gap-3 rounded border border-neutral-800 bg-neutral-950/50 p-3">
-                              <div>
-                                <div className="text-sm font-medium text-white">{item.name}</div>
-                                <div className="mt-1 text-xs text-gray-400">{item.slot} · {item.item_type} · {item.code}</div>
+                              <div className="flex min-w-0 items-center gap-3">
+                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-neutral-800 bg-black/40 p-1">
+                                  {classicItemIcon(item.code) ? <img src={classicItemIcon(item.code)!} alt="" className="d2-item-sprite max-h-full max-w-full object-contain" draggable={false} /> : <span className="font-mono text-[9px] text-neutral-600">{item.code}</span>}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-sm font-medium text-white">{item.name}</div>
+                                  <div className="mt-1 text-xs text-gray-400">{item.slot} · {item.item_type} · {item.code}</div>
+                                </div>
                               </div>
                               <div className="flex shrink-0 flex-wrap justify-end gap-1">
                                 <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] text-gray-300">
@@ -809,8 +905,8 @@ export default function App() {
                           ))}
                         </div>
                       )}
-                    </section>
-                  </div>
+                    </section>}
+                  </>
                 ) : (
                   <div className="text-center pt-20">
                     <h2 className="text-xl text-gray-400">Loading character...</h2>
@@ -865,7 +961,10 @@ export default function App() {
             <section className="mb-5 rounded-lg border border-neutral-800 bg-neutral-900/60 p-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <input
-                  type="search"
+                  type="text"
+                  inputMode="search"
+                  autoComplete="off"
+                  aria-label="Search bank items"
                   placeholder="Search names, codes, item details…"
                   value={bankSearch}
                   onChange={(e) => setBankSearch(e.target.value)}
@@ -884,7 +983,7 @@ export default function App() {
                   {bankRarities.map((rarity) => <option key={rarity} value={rarity}>{rarity}</option>)}
                 </select>
                 <select value={bankTransferFilter} onChange={(e) => setBankTransferFilter(e.target.value as typeof bankTransferFilter)} className="bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-white">
-                  <option value="all">All transfer states</option>
+                  <option value="all">Include transfer history</option>
                   <option value="available">Available to transfer</option>
                   <option value="transferred">Already transferred</option>
                 </select>
@@ -943,12 +1042,12 @@ export default function App() {
               <button onClick={clearBankFilters} className="ml-2 text-amber-200 hover:underline">Clear filters</button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
               {filteredBankItems.map((item) => {
                 const details = bankDetails.get(item.id)!
                 const compatibility = itemCompatibility(item, matchCharacter)
                 return (
-                  <article key={item.id} className="min-w-0 rounded-lg border border-neutral-800 bg-neutral-900/70 p-4 shadow-sm transition-colors hover:border-neutral-700 hover:bg-neutral-900">
+                  <article key={item.id} className={`min-w-0 rounded-lg border p-4 shadow-sm transition-colors ${item.transferred_to ? 'border-neutral-800/70 bg-neutral-950/70 opacity-70' : 'border-neutral-800 bg-neutral-900/70 hover:border-red-900 hover:bg-neutral-900'}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 items-start gap-2">
                         <input
@@ -964,9 +1063,17 @@ export default function App() {
                           })}
                           className="mt-1 accent-red-700 disabled:opacity-40"
                         />
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-neutral-800 bg-black/40 p-1">
+                          {details.iconPath ? (
+                            <img src={details.iconPath} alt="" className="d2-item-sprite max-h-full max-w-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]" loading="lazy" draggable={false} />
+                          ) : (
+                            <span className="text-[9px] font-mono uppercase tracking-wide text-neutral-600">{item.base_item.slice(0, 4)}</span>
+                          )}
+                        </div>
                         <div className="min-w-0">
                         <h3 className="break-words font-semibold text-white">{item.base_item}</h3>
                         <p className="mt-1 text-[11px] uppercase tracking-wide text-amber-200">{details.type}</p>
+                        {item.transferred_to && <span className="mt-2 inline-flex rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-300">Archived transfer · unavailable</span>}
                         </div>
                       </div>
                       <span className="shrink-0 rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[11px] text-amber-300">
@@ -998,7 +1105,7 @@ export default function App() {
                     </dl>}
 
                     <footer className="mt-3 flex items-center justify-between gap-2 border-t border-neutral-800 pt-3">
-                      <span className="truncate text-[11px] text-gray-500" title={item.transferred_to || formatWhen(item.banked_at)}>{item.transferred_to ? `Transferred to ${item.transferred_to}` : item.has_item_data ? `Banked ${formatWhen(item.banked_at)}` : 'No game data'}</span>
+                      <span className="truncate text-[11px] text-gray-500" title={item.transferred_to || formatWhen(item.banked_at)}>{item.transferred_to ? `Moved to ${item.transferred_to}` : item.has_item_data ? `Banked ${formatWhen(item.banked_at)}` : 'No game data'}</span>
                       <button
                         onClick={() => void handleDeleteBankItem(item.id)}
                         className="shrink-0 rounded px-2 py-1 text-xs text-red-400 hover:bg-red-400/10 hover:text-red-300"

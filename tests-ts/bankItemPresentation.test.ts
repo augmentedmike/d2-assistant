@@ -42,12 +42,17 @@ describe('bankItemDetails', () => {
     const details = bankItemDetails(makeItem())
     expect(details.type).toBe('Weapon')
     expect(details.rarity).toBe('Normal')
+    expect(details.iconPath).toBe('/item-icons/crs.png')
     expect(details.properties).toEqual(['+3 to Fire Skills'])
     expect(details.attributes).toEqual([
       { label: 'Level req.', value: '25' },
       { label: 'Class req.', value: 'Any' },
       { label: 'Sockets', value: '4' },
     ])
+  })
+
+  test('uses a supplied item icon path before the classic item mapping', () => {
+    expect(bankItemDetails(makeItem({ icon_path: '/custom/icon.png' })).iconPath).toBe('/custom/icon.png')
   })
 
   test('does not show sockets for gems or zero socket counts', () => {
@@ -118,6 +123,22 @@ describe('filterBankItems', () => {
       transfer: 'transferred',
       minLevel: '1',
     }, undefined)).toEqual([])
+  })
+
+  test('matches three-letter rune names while typing', () => {
+    const unrelatedSword = makeItem()
+    const runes = [
+      makeItem({ id: 3, base_item: 'Tir Rune', affixes_json: '["Type: Rune", "D2 item code: r03", "Rarity: Normal"]' }),
+      makeItem({ id: 4, base_item: 'Tal Rune', affixes_json: '["Type: Rune", "D2 item code: r07", "Rarity: Normal"]' }),
+      makeItem({ id: 5, base_item: 'Eth Rune', affixes_json: '["Type: Rune", "D2 item code: r05", "Rarity: Normal"]' }),
+    ]
+    const searchableItems = [unrelatedSword, ...runes]
+    const runeDetails = new Map(searchableItems.map((item) => [item.id, bankItemDetails(item)]))
+
+    for (const [query, expected] of [['tir', 'Tir Rune'], ['tal', 'Tal Rune'], ['eth', 'Eth Rune']]) {
+      expect(filterBankItems(searchableItems, runeDetails, { ...emptyFilters, search: query }, undefined).map((item) => item.base_item)).toEqual([expected])
+    }
+    expect(filterBankItems(searchableItems, runeDetails, { ...emptyFilters, search: 'r03' }, undefined).map((item) => item.base_item)).toEqual(['Tir Rune'])
   })
 })
 

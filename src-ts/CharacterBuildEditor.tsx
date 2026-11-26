@@ -172,7 +172,7 @@ export default function CharacterBuildEditor({ selected, character, onSaved }: P
         <button type="button" onClick={resetAllocations} disabled={busy || !hasAllocations} className="rounded border border-neutral-700 px-3 py-1.5 text-xs text-gray-200 hover:border-red-700 disabled:opacity-40">Respec all</button>
       </div>
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-2">
+      <div className="mb-5 grid gap-3 lg:grid-cols-2">
         <div className="rounded border border-neutral-800 bg-neutral-950 p-3">
           <div className="mb-2 flex items-center justify-between gap-2"><h3 className="font-semibold text-gray-200">Attributes</h3><div className="flex items-center gap-2"><span className="text-xs text-amber-300">{unspentStats} unspent</span><button type="button" onClick={resetAttributes} disabled={busy || !hasAttributeAllocations} className="text-xs text-gray-400 hover:text-white disabled:opacity-30">Reset</button></div></div>
           <div className="grid grid-cols-2 gap-2">

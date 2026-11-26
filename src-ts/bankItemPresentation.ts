@@ -1,4 +1,5 @@
 import type { BankItem, CharacterListing } from './lib/tauri'
+import { classicItemIcon } from './itemIcons'
 
 export type Compatibility = 'usable' | 'unusable' | 'unknown'
 export type BankTransferFilter = 'all' | 'available' | 'transferred'
@@ -19,6 +20,7 @@ export type BankItemFilters = {
 export type BankItemDetails = {
   type: string
   rarity: string
+  iconPath: string | null
   properties: string[]
   attributes: { label: string; value: string }[]
 }
@@ -36,6 +38,7 @@ export function bankItemDetails(item: BankItem): BankItemDetails {
   const values = parseAffixes(item.affixes_json)
   const type = values.find((value) => value.startsWith('Type: '))?.slice(6) ?? 'Uncategorized'
   const rarity = values.find((value) => value.startsWith('Rarity: '))?.slice(8) ?? 'Unknown'
+  const code = values.find((value) => value.startsWith('D2 item code: '))?.slice(14) ?? ''
   const metadataLabels = ['Type: ', 'D2 item code: ', 'Rarity: ']
   const properties = values.filter(
     (value) => !metadataLabels.some((label) => value.startsWith(label)) &&
@@ -58,7 +61,7 @@ export function bankItemDetails(item: BankItem): BankItemDetails {
     })
   }
 
-  return { type, rarity, properties, attributes }
+  return { type, rarity, iconPath: item.icon_path ?? classicItemIcon(code), properties, attributes }
 }
 
 export function itemCompatibility(item: BankItem, character: CharacterListing | undefined): Compatibility {
@@ -70,10 +73,21 @@ export function itemCompatibility(item: BankItem, character: CharacterListing | 
 }
 
 function matchesSearch(item: BankItem, search: string): boolean {
-  return [item.base_item, item.affixes_json, item.class_req]
-    .join(' ')
-    .toLowerCase()
-    .includes(search)
+  const terms = search.split(/\s+/).filter(Boolean)
+  const name = item.base_item.toLowerCase()
+  const nameWords = name.match(/[a-z0-9]+/g) ?? []
+  const itemCode = parseAffixes(item.affixes_json)
+    .find((value) => value.startsWith('D2 item code: '))
+    ?.slice(14)
+    .toLowerCase() ?? ''
+  const details = [item.affixes_json, item.class_req].join(' ').toLowerCase()
+
+  return terms.every((term) => {
+    if (term.length <= 3) {
+      return nameWords.some((word) => word.startsWith(term)) || itemCode.startsWith(term)
+    }
+    return `${name} ${details}`.includes(term)
+  })
 }
 
 function matchesTransfer(item: BankItem, filter: BankTransferFilter): boolean {

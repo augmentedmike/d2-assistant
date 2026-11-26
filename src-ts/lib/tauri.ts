@@ -53,6 +53,23 @@ export interface EquippedItem {
   socketed: boolean
 }
 
+export interface CharacterStorageItem {
+  item_index: number
+  code: string
+  name: string
+  seed: number
+  fingerprint: string
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface CharacterStorageItems {
+  inventory: CharacterStorageItem[]
+  stash: CharacterStorageItem[]
+}
+
 export interface StashData {
   file_size: number
   item_count: number
@@ -155,6 +172,10 @@ export async function parseCharacter(path: string): Promise<CharacterData> {
   )
 }
 
+export async function characterStorageItems(path: string): Promise<CharacterStorageItems> {
+  return await invoke<CharacterStorageItems>('character_storage_items', { characterPath: path })
+}
+
 export async function parseStash(path: string): Promise<StashData> {
   return unwrapParseResult(
     await invoke<ParseResult<StashData>>('parse_stash', { path }),
@@ -177,6 +198,15 @@ export async function bankDeleteItem(id: number): Promise<void> {
 /** Back up and move every complete item record from a selected D2X stash into the bank. */
 export async function bankImportStashItems(stashPath: string): Promise<BankImportResult> {
   return await invoke<BankImportResult>('bank_import_stash_items', { stashPath })
+}
+
+/** Move all items from a character's personal stash or carried inventory into the shared bank. */
+export async function bankDepositCharacterItems(
+  characterPath: string,
+  source: 'stash' | 'inventory',
+  selectedItems: Pick<CharacterStorageItem, 'item_index' | 'code' | 'seed' | 'fingerprint'>[],
+): Promise<number> {
+  return await invoke<number>('bank_deposit_character_items', { characterPath, source, selectedItems })
 }
 
 export async function bankExportItems(
