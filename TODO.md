@@ -28,10 +28,13 @@ This is the public project task list. Completed work is recorded in `CHANGELOG.m
 
 ## Next version — character editing and backup recovery
 
+- [x] Lock save-changing operations while a Diablo II or D2R process is running; identify the loaded character if a reliable platform signal becomes available.
+
 - [x] Add classic LoD skill trees with current allocations, prerequisites, and unspent points.
 - [x] Add locally bundled original classic skill icons to the Character Lab skill trees.
 - [x] Allow skill allocation only from unspent earned skill points; permit respec/reallocation of already spent points without increasing the earned total.
 - [x] Allow attribute allocation only from unspent earned stat points; permit respec/reallocation of already spent points without increasing the earned total.
+- [x] Allow direct target-value entry for attribute points, capped at the character's available earned points.
 - [x] Add separate carried (belt/inventory) and stash gold fields with save-format limits and a review before writing.
 - [x] Add a local feature flag for classic skill and attribute editing (on by default, switchable off); show a review and require confirmation before any write.
 - [x] Back up and validate the selected save before gold edits and bank transfers; update the chosen character in place to avoid duplicate character files.

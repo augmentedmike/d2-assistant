@@ -190,7 +190,7 @@ fn item_table_row<'a>(code: &str, txt: &'a TxtData) -> Option<(Vec<&'a str>, Vec
     None
 }
 
-fn item_level_requirement(
+pub(crate) fn item_level_requirement(
     code: &str,
     quality: &d2s::ItemQuality,
     runeword: bool,
@@ -216,7 +216,7 @@ fn item_level_requirement(
         .unwrap_or(-1)
 }
 
-fn item_class_requirement(code: &str, txt: &TxtData) -> String {
+pub(crate) fn item_class_requirement(code: &str, txt: &TxtData) -> String {
     let Some((headers, values)) = item_table_row(code, txt) else {
         return "Unknown".into();
     };

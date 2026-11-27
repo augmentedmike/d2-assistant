@@ -10,13 +10,24 @@ D2 Assistant helps organize classic Diablo II items and move selected gear back 
 
 ## What it does
 
-- **Local item bank:** import a supported version 96 `.d2x` stash, browse item cards, and search/filter by item type, rarity, requirements, sockets, and transfer status.
-- **Bulk selection:** refine results with multiple filters, select visible items, and keep selections while changing filters.
-- **Safer transfers:** move selected items into a chosen character's inventory or personal stash. The app backs up the selected save, updates it in place, and validates the result so it does not create duplicate character files.
-- **Character overview:** read local character saves and compare known item class/level requirements with a transfer target.
-- **Persistent setup:** remember the selected game-save folder in D2 Assistant's local settings database across app restarts and updates.
-- **Character Lab:** view classic skill trees with their original skill icons and reallocate skill and attribute points without increasing points the character has earned. Writes are backed up and limited to validated classic LoD version 96 saves.
-- **Runeword reference:** browse ordered runes, sockets, bases, and bonuses offline. Standard LoD recipes are shown by default; optional D2R/Reign references are clearly marked and can be hidden.
+- **Local shared bank:** import a supported version 96 `.d2x` stash with a byte-verified backup, then browse items as responsive cards or game-shaped grids with original classic item sprites. The source stash is emptied only after its items are banked.
+- **Search and filters:** search item names, codes, and affixes from three-character prefixes; filter by affix, item type, rarity, class requirements, level range, socket count, compatibility, and transfer state. Filters combine, and selections remain while you refine results.
+- **Bulk item movement:** select items from a character's inventory or private stash to deposit into the shared bank, or select bank items and place them into a chosen character's inventory or private stash. Every character write targets the chosen save in place, with a verified backup and output validation.
+- **Duplicate review:** detect matching nonzero item fingerprints in the bank and avoid repeat transfers. Batch deposits skip individually identified repeats while allowing other selected items to move. Seed-zero items cannot be distinguished by that fingerprint method.
+- **Detailed item inspection:** hover or keyboard-focus an item for its decoded properties, sockets, quality, requirements, and other available details. Properties are formatted by item type, and unknown values remain explicitly unknown.
+- **Character pages:** inspect character class, level, stats, equipment, inventory, and private stash in separate Overview, Items, Skills & stats, and Backups tabs.
+- **Skill and attribute editing:** view all seven classic LoD skill trees with original skill icons. Spend only earned unspent points, observe level/prerequisite rules, reallocate spent points, or respec. Writes are confirmed, backed up, validated, and limited to supported version 96 saves.
+- **Gold editing:** edit carried (belt/inventory) and stash gold separately, with game limits applied and a Max out action for each balance.
+- **Versioned recovery:** automatic local character backups are on by default. New versions are created only when save contents change; the history shows the newest five first and supports restore with a preserved current save.
+- **Live-game write protection:** while Diablo II or D2R is running, character and stash files are read only. The game process does not reliably reveal which character is loaded, so the lock covers all save files until the game exits.
+- **Persistent setup and local data:** remember the selected game-save folder in the app's local settings database. Item bank and character data stay on the computer; the app does not connect to Battle.net.
+- **Offline runeword recipes:** browse ordered runes, bases, socket counts, and bonuses. Standard LoD recipes are available by default; ladder, D2R, and Reign of the Warlock recipes are clearly marked and can be filtered through the local Features setting.
+- **Desktop app and releases:** native Tauri app with a responsive red, ember, and steel visual theme, transparent logo/app icons, and GitHub Actions workflows for macOS, Windows, and Linux installers.
+- **Community contribution workflow:** human- and agent-authored patches are welcome. Feature proposals can be discussed and voted on in GitHub Discussions; local feature switches support optional capabilities.
+
+## Current support boundary
+
+Character and stash editing targets original Diablo II + Lord of Destruction version 96 saves. D2R save editing, online characters, Battle.net connectivity, and server-side dupe protection are not implemented. D2R/Reign recipe entries are reference data only. Desktop installer builds are automated, but installers are currently unsigned and should be validated on each target OS.
 
 ## Why I built this
 
@@ -55,6 +66,8 @@ Contributions from people and coding agents are welcome. **We especially need co
 
 The current release does not read online characters, connect to Battle.net, or guarantee server-side dupe protection. Fingerprints can report evidence and confidence; they cannot prove an online item's ownership or authenticity. Do not submit account credentials or private save files. See [CONTRIBUTING.md](CONTRIBUTING.md) for the quality bar, feature voting, and pull-request process. Vote on ideas in [GitHub Discussions](https://github.com/augmentedmike/d2-assistant/discussions). Optional features will use local feature flags so users can opt in or out; safety behavior will never be hidden behind a flag.
 
+For an overview of the AI-assisted development approach, engineering guardrails, delivery history, and an assessment of the project's engineering decisions, see the [engineering case study](docs/ENGINEERING-CASE-STUDY.md).
+
 ## Building from source
 
 Prerequisites: Bun, Rust, and the native Tauri dependencies for your operating system. See the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
@@ -72,6 +85,12 @@ bun run tauri:build
 ```
 
 This project currently builds for macOS on the development machine. Windows and Linux installers are built by the release workflow on native GitHub-hosted runners.
+
+Maintainers can run **Desktop build check** from the GitHub Actions tab to build Windows and Linux installers without publishing a release. The workflow uploads temporary installer artifacts for review; see [RELEASING.md](docs/RELEASING.md). Standard GitHub-hosted runners are free for public repositories.
+
+## Preparing a release
+
+See the [desktop release process](docs/RELEASING.md) for the preflight command and publishing steps.
 
 ## Roadmap
 

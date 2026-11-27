@@ -9,7 +9,7 @@ mod items;
 use ::d2s::{D2Save, StatId};
 use bank_commands::{
     bank_add_item, bank_delete_item, bank_deposit_character_items, bank_export_items,
-    bank_get_items, bank_import_stash_items, character_storage_items,
+    bank_find_duplicates, bank_get_items, bank_import_stash_items, character_storage_items,
 };
 use d2s::{CharacterData, parse_d2s};
 use d2x::{StashData, parse_d2x};
@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use tauri::{Manager, command};
 
 #[derive(Debug, Serialize)]
@@ -99,6 +100,42 @@ fn now_secs() -> Result<i64, String> {
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|e| format!("time error: {}", e))?
         .as_secs() as i64)
+}
+
+/// True while a known classic Diablo II or D2R game executable is running.
+/// The game does not reliably expose the loaded character name, so writes are
+/// locked for all saves while a game process is present.
+fn diablo_process_running() -> Result<bool, String> {
+    #[cfg(target_os = "windows")]
+    let output = Command::new("tasklist")
+        .args(["/FO", "CSV", "/NH"])
+        .output();
+    #[cfg(not(target_os = "windows"))]
+    let output = Command::new("ps").args(["-axo", "comm=,args="]).output();
+
+    let output = output.map_err(|error| format!("could not inspect running processes: {error}"))?;
+    if !output.status.success() {
+        return Err("could not inspect running processes".into());
+    }
+    let processes = String::from_utf8_lossy(&output.stdout).to_ascii_lowercase();
+    Ok(
+        ["d2.exe", "d2r.exe", "diablo ii", "diablo2.exe", "game.exe"]
+            .iter()
+            .any(|name| processes.contains(name)),
+    )
+}
+
+pub(crate) fn ensure_diablo_closed() -> Result<(), String> {
+    match diablo_process_running() {
+        Ok(true) => Err("Character saves are read-only while Diablo II or D2R is running. Quit the game, then refresh and try again.".into()),
+        Ok(false) => Ok(()),
+        Err(error) => Err(format!("Character saves are read-only because the game process status could not be checked: {error}")),
+    }
+}
+
+#[command]
+fn is_diablo_running() -> Result<bool, String> {
+    diablo_process_running()
 }
 
 fn unique_sidecar_path(path: &Path, label: &str, timestamp: i64) -> PathBuf {
@@ -368,6 +405,7 @@ fn character_restore_backup(
     character_path: String,
     backup_id: i64,
 ) -> Result<String, String> {
+    ensure_diablo_closed()?;
     let conn = open_app_db(&app)?;
     let (snapshot_path, expected_fingerprint): (String, String) = conn
         .query_row(
@@ -393,12 +431,14 @@ fn character_restore_backup(
     if content_fingerprint(&current_bytes) == expected_fingerprint {
         return Ok("selected backup already matches the character save".into());
     }
+    ensure_diablo_closed()?;
     capture_character_backup(&app, &target_path, true)?;
     let timestamp = now_secs()?;
     let temp_path = unique_sidecar_path(&target_path, "restore-tmp", timestamp);
     let displaced_path = unique_sidecar_path(&target_path, "restore-current", timestamp);
     fs::write(&temp_path, &snapshot_bytes)
         .map_err(|e| format!("could not prepare restored save: {e}"))?;
+    ensure_diablo_closed()?;
     fs::rename(&target_path, &displaced_path)
         .map_err(|e| format!("could not preserve current character save: {e}"))?;
     if let Err(error) = fs::rename(&temp_path, &target_path) {
@@ -469,6 +509,7 @@ fn edit_character_build(
     attributes: [u16; 4],
     skill_levels: Vec<u8>,
 ) -> Result<String, String> {
+    ensure_diablo_closed()?;
     const ATTRIBUTE_MAX: u16 = 1023;
     let path = PathBuf::from(&character_path);
     if !path.is_file() {
@@ -623,6 +664,7 @@ fn edit_character_build(
         let _ = fs::remove_file(&temp_path);
         return Err("updated character save failed byte verification".into());
     }
+    ensure_diablo_closed()?;
     fs::rename(&path, &displaced_path)
         .map_err(|e| format!("could not preserve current character save: {e}"))?;
     if let Err(error) = fs::rename(&temp_path, &path) {
@@ -662,6 +704,7 @@ fn edit_character_gold(
     carried_gold: u32,
     stash_gold: u32,
 ) -> Result<String, String> {
+    ensure_diablo_closed()?;
     const STASH_GOLD_LIMIT: u32 = 2_500_000;
     let selected_path = PathBuf::from(&character_path);
     if !selected_path.is_file() {
@@ -720,6 +763,7 @@ fn edit_character_gold(
     let displaced_path = unique_sidecar_path(&output_path, "gold-previous", timestamp);
     fs::write(&temp_path, &output_bytes)
         .map_err(|e| format!("could not prepare edited save: {e}"))?;
+    ensure_diablo_closed()?;
     if output_path.exists() {
         fs::rename(&output_path, &displaced_path)
             .map_err(|e| format!("could not preserve existing app save: {e}"))?;
@@ -760,6 +804,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            is_diablo_running,
             get_app_setting,
             set_app_setting,
             parse_character,
@@ -774,6 +819,7 @@ pub fn run() {
             bank_add_item,
             bank_delete_item,
             bank_get_items,
+            bank_find_duplicates,
             bank_import_stash_items,
             bank_deposit_character_items,
             bank_export_items,

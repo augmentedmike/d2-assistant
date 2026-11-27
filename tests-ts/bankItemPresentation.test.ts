@@ -140,6 +140,35 @@ describe('filterBankItems', () => {
     }
     expect(filterBankItems(searchableItems, runeDetails, { ...emptyFilters, search: 'r03' }, undefined).map((item) => item.base_item)).toEqual(['Tir Rune'])
   })
+
+  test('searches item adds in the regular query and the add filter', () => {
+    const caster = makeItem({
+      id: 6,
+      affixes_json: JSON.stringify(['Type: Amulet', 'Rarity: Magic', 'Item Faster Cast Rate +10']),
+    })
+    const casterDetails = new Map([[caster.id, bankItemDetails(caster)]])
+
+    expect(filterBankItems([caster], casterDetails, { ...emptyFilters, search: 'cast rate +10' }, undefined)).toEqual([caster])
+    expect(filterBankItems([caster], casterDetails, { ...emptyFilters, search: 'fas' }, undefined)).toEqual([caster])
+    expect(filterBankItems([caster], casterDetails, { ...emptyFilters, affix: 'Faster Cast Rate' }, undefined)).toEqual([caster])
+    expect(filterBankItems([caster], casterDetails, { ...emptyFilters, affix: 'Life Steal' }, undefined)).toEqual([])
+  })
+
+  test('matches search terms at word boundaries instead of inside other words', () => {
+    const damageItem = makeItem({
+      id: 7,
+      affixes_json: JSON.stringify(['Type: Weapon', 'Rarity: Normal', 'Maximum Damage +1']),
+    })
+    const mageItem = makeItem({
+      id: 8,
+      base_item: 'Mage Plate',
+      affixes_json: JSON.stringify(['Type: Armor', 'Rarity: Normal']),
+    })
+    const searchableItems = [damageItem, mageItem]
+    const itemDetails = new Map(searchableItems.map((item) => [item.id, bankItemDetails(item)]))
+
+    expect(filterBankItems(searchableItems, itemDetails, { ...emptyFilters, search: 'Mage' }, undefined).map((item) => item.base_item)).toEqual(['Mage Plate'])
+  })
 })
 
 describe('validateGoldDrafts', () => {

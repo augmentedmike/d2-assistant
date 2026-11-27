@@ -3,6 +3,7 @@ import { open } from '@tauri-apps/plugin-dialog'
 import Runewords from './Runewords'
 import CharacterBuildEditor from './CharacterBuildEditor'
 import CharacterStorageGrid from './CharacterStorageGrid'
+import AffixFilter from './AffixFilter'
 import { classicItemIcon } from './itemIcons'
 import { bankItemDetails, filterBankItems, itemCompatibility, validateGoldDrafts } from './bankItemPresentation'
 import type { Compatibility } from './bankItemPresentation'
@@ -12,6 +13,7 @@ import {
   characterStorageItems,
   bankGetItems,
   bankDeleteItem,
+  bankFindDuplicates,
   bankImportStashItems,
   bankDepositCharacterItems,
   bankExportItems,
@@ -19,6 +21,7 @@ import {
   characterRestoreBackup,
   editCharacterGold,
   getAppSetting,
+  isDiabloRunning,
   setAppSetting,
 } from './lib/tauri'
 import type {
@@ -26,6 +29,7 @@ import type {
   CharacterData,
   CharacterBackupVersion,
   BankItem,
+  BankDuplicateGroup,
   CharacterStorageItems,
 } from './lib/tauri'
 
@@ -48,6 +52,8 @@ function formatWhen(epochSecs: number): string {
 }
 
 export default function App() {
+  const [gameStatus, setGameStatus] = useState<'checking' | 'running' | 'stopped' | 'unknown'>('checking')
+  const savesReadOnly = gameStatus !== 'stopped'
   const [tab, setTab] = useState<Tab>('characters')
   const [characterSubtab, setCharacterSubtab] = useState<'overview' | 'items' | 'skills' | 'backups'>('overview')
   const [saveDir, setSaveDir] = useState('')
@@ -66,11 +72,14 @@ export default function App() {
   const [stashGoldDraft, setStashGoldDraft] = useState('')
   const [editingGold, setEditingGold] = useState<'carried' | 'stash' | null>(null)
   const [bankItems, setBankItems] = useState<BankItem[]>([])
+  const [duplicateGroups, setDuplicateGroups] = useState<BankDuplicateGroup[]>([])
+  const [duplicateReviewOpen, setDuplicateReviewOpen] = useState(false)
   const [selectedBankIds, setSelectedBankIds] = useState<Set<number>>(new Set())
   const [transferCharacterPath, setTransferCharacterPath] = useState('')
   const [transferDestination, setTransferDestination] = useState<'inventory' | 'stash'>('stash')
   const [notice, setNotice] = useState<string | null>(null)
   const [bankSearch, setBankSearch] = useState('')
+  const [bankAffixFilter, setBankAffixFilter] = useState('')
   const [bankTypeFilter, setBankTypeFilter] = useState('')
   const [bankClassFilter, setBankClassFilter] = useState('')
   const [bankRarityFilter, setBankRarityFilter] = useState('')
@@ -82,6 +91,21 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const selectedCharacterPath = useRef<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    const refreshGameStatus = async () => {
+      try {
+        const running = await isDiabloRunning()
+        if (active) setGameStatus(running ? 'running' : 'stopped')
+      } catch {
+        if (active) setGameStatus('unknown')
+      }
+    }
+    void refreshGameStatus()
+    const interval = window.setInterval(() => void refreshGameStatus(), 1500)
+    return () => { active = false; window.clearInterval(interval) }
+  }, [])
 
   const loadCharacters = useCallback(async () => {
     if (!settingsLoaded) return
@@ -207,14 +231,16 @@ export default function App() {
     return () => window.clearTimeout(timeout)
   }, [tab, saveDir, settingsLoaded, loadBank, loadCharacters])
 
-  const handleSelect = async (char: CharacterListing) => {
+  const handleSelect = async (char: CharacterListing, resetSubtab = true) => {
     selectedCharacterPath.current = char.path
     setSelected(char)
-    setCharacterSubtab('overview')
-    setCharacterData(null)
-    setCharacterBackups([])
-    setCharacterStorage({ inventory: [], stash: [] })
-    setCharacterStorageSelection({ inventory: new Set(), stash: new Set() })
+    if (resetSubtab) {
+      setCharacterSubtab('overview')
+      setCharacterData(null)
+      setCharacterBackups([])
+      setCharacterStorage({ inventory: [], stash: [] })
+      setCharacterStorageSelection({ inventory: new Set(), stash: new Set() })
+    }
     setLoading(true)
     setError(null)
     try {
@@ -226,22 +252,26 @@ export default function App() {
       setCharacterData(data)
       setCharacterBackups(versions)
       setCharacterStorage(storage)
+      if (!resetSubtab) setCharacterStorageSelection({ inventory: new Set(), stash: new Set() })
       setCarriedGoldDraft(String(data.gold))
       setStashGoldDraft(String(data.stash_gold))
       setShowAllCharacterBackups(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
-      setCharacterData(null)
-      setCharacterBackups([])
-      setCharacterStorage({ inventory: [], stash: [] })
-      setCarriedGoldDraft('')
-      setStashGoldDraft('')
+      if (resetSubtab) {
+        setCharacterData(null)
+        setCharacterBackups([])
+        setCharacterStorage({ inventory: [], stash: [] })
+        setCarriedGoldDraft('')
+        setStashGoldDraft('')
+      }
     } finally {
       setLoading(false)
     }
   }
 
   const handleRestoreCharacterBackup = async (version: CharacterBackupVersion) => {
+    if (savesReadOnly) return
     if (!selected) return
     const confirmed = window.confirm(
       `Restore the character save from ${formatWhen(version.created_at)}? The current save will be backed up first. This replaces the selected .d2s file.`,
@@ -262,6 +292,7 @@ export default function App() {
   }
 
   const handleSaveGold = async (carriedDraft = carriedGoldDraft, stashDraft = stashGoldDraft) => {
+    if (savesReadOnly) return
     if (!selected || !characterData) return
     const gold = validateGoldDrafts(characterData.level, carriedDraft, stashDraft)
     if (!gold.valid) {
@@ -306,16 +337,33 @@ export default function App() {
   }
 
   const handleDeleteBankItem = async (id: number) => {
+    const item = bankItems.find((candidate) => candidate.id === id)
+    if (!window.confirm(`Remove ${item?.base_item ?? 'this item record'} from the shared bank? This does not edit any character save.`)) return
     setError(null)
     try {
       await bankDeleteItem(id)
       setBankItems((prev) => prev.filter((item) => item.id !== id))
+      if (duplicateReviewOpen) setDuplicateGroups(await bankFindDuplicates())
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
   }
 
+  const handleFindDuplicates = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      setDuplicateGroups(await bankFindDuplicates())
+      setDuplicateReviewOpen(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleImportStashItems = async () => {
+    if (savesReadOnly) return
     setLoading(true)
     setError(null)
     setNotice(null)
@@ -339,6 +387,7 @@ export default function App() {
   }
 
   const handleDepositCharacterItems = async (source: 'stash' | 'inventory') => {
+    if (savesReadOnly) return
     if (!selected) return
     const sourceLabel = source === 'stash' ? 'private stash' : 'inventory'
     const selection = characterStorage[source].filter((item) => characterStorageSelection[source].has(item.item_index))
@@ -348,9 +397,14 @@ export default function App() {
     setError(null)
     setNotice(null)
     try {
-      const count = await bankDepositCharacterItems(selected.path, source, selection.map(({ item_index, code, seed, fingerprint }) => ({ item_index, code, seed, fingerprint })))
-      await Promise.all([loadBank(), handleSelect(selected)])
-      setNotice(`Moved ${count} item${count === 1 ? '' : 's'} from ${selected.name}'s ${sourceLabel} to the shared bank. A verified character backup was created.`)
+      const result = await bankDepositCharacterItems(selected.path, source, selection.map(({ item_index, code, seed, fingerprint }) => ({ item_index, code, seed, fingerprint })))
+      if (result.moved > 0) await Promise.all([loadBank(), handleSelect(selected, false)])
+      const duplicateNotice = result.duplicates.length
+        ? ` Skipped ${result.duplicates.length} suspected duplicate${result.duplicates.length === 1 ? '' : 's'} and left ${result.duplicates.length === 1 ? 'it' : 'them'} on the character.`
+        : ''
+      setNotice(result.moved > 0
+        ? `Moved ${result.moved} item${result.moved === 1 ? '' : 's'} from ${selected.name}'s ${sourceLabel} to the shared bank. A verified character backup was created.${duplicateNotice}`
+        : `No items moved. The selected item${result.duplicates.length === 1 ? '' : 's'} matched existing bank fingerprints and remain on ${selected.name}.${duplicateNotice}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -359,6 +413,7 @@ export default function App() {
   }
 
   const handleExportSelected = async () => {
+    if (savesReadOnly) return
     if (!transferCharacterPath) {
       setError('Scan for a character before transferring items.')
       return
@@ -391,9 +446,14 @@ export default function App() {
   const bankTypes = [...new Set(bankItems.map((item) => bankDetails.get(item.id)!.type))].sort()
   const bankClasses = [...new Set(bankItems.map((item) => item.class_req))].sort()
   const bankRarities = [...new Set(bankItems.map((item) => bankDetails.get(item.id)!.rarity))].sort()
+  const bankAffixOptions = useMemo(
+    () => [...new Set(bankItems.flatMap((item) => bankDetails.get(item.id)?.properties.filter((property) => property !== 'Runeword') ?? []))].sort((a, b) => a.localeCompare(b)),
+    [bankItems, bankDetails],
+  )
   const matchCharacter = characters.find((character) => character.path === transferCharacterPath)
   const filteredBankItems = filterBankItems(bankItems, bankDetails, {
     search: bankSearch,
+    affix: bankAffixFilter,
     type: bankTypeFilter,
     class: bankClassFilter,
     rarity: bankRarityFilter,
@@ -405,6 +465,7 @@ export default function App() {
   }, matchCharacter)
   const clearBankFilters = () => {
     setBankSearch('')
+    setBankAffixFilter('')
     setBankTypeFilter('')
     setBankClassFilter('')
     setBankRarityFilter('')
@@ -486,7 +547,8 @@ export default function App() {
           <div className="mt-2 flex w-full items-center justify-end gap-2">
             <button
               onClick={() => void handleImportStashItems()}
-              disabled={loading}
+              disabled={loading || savesReadOnly}
+              title={savesReadOnly ? 'Quit Diablo II before modifying stash files' : undefined}
               className="text-sm bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 px-3 py-1 rounded"
             >
                   Choose stash to back up & move
@@ -510,6 +572,16 @@ export default function App() {
       {notice && (
         <div className="px-4 py-2 bg-amber-950/30 border-b border-amber-900/50 text-sm text-amber-100 break-all">
           {notice}
+        </div>
+      )}
+      {savesReadOnly && (
+        <div role="status" className="border-b border-amber-800/70 bg-amber-950/50 px-4 py-3 text-sm text-amber-100">
+          <strong>{gameStatus === 'running' ? 'Character saves are read only.' : 'Character save editing is locked.'}</strong>{' '}
+          {gameStatus === 'running'
+            ? 'Diablo II or D2R is running. Quit the game and wait for this message to clear before transferring items, editing character data, restoring a backup, or importing a stash.'
+            : gameStatus === 'checking'
+              ? 'Checking the Diablo II process status. Editing stays disabled until the check succeeds.'
+              : 'The process check failed. Save editing stays locked for safety until the app can verify the game is closed.'}
         </div>
       )}
 
@@ -602,8 +674,8 @@ export default function App() {
                 <nav aria-label="Character sections" className="mb-6 flex gap-1 overflow-x-auto border-b border-neutral-800">
                   {([
                     ['overview', 'Overview'],
-                    ['items', `Items · ${characterStorage.inventory.length + characterStorage.stash.length}`],
                     ['skills', 'Skills & stats'],
+                    ['items', `Items · ${characterStorage.inventory.length + characterStorage.stash.length}`],
                     ['backups', `Backups · ${characterBackups.length}`],
                   ] as const).map(([key, label]) => (
                     <button key={key} onClick={() => setCharacterSubtab(key)} className={`shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${characterSubtab === key ? 'border-red-600 text-amber-100' : 'border-transparent text-gray-400 hover:text-white'}`} aria-current={characterSubtab === key ? 'page' : undefined}>
@@ -622,6 +694,7 @@ export default function App() {
                       items={characterStorage.inventory}
                       selected={characterStorageSelection.inventory}
                       loading={loading}
+                      readOnly={savesReadOnly}
                       onToggle={(itemIndex) => setCharacterStorageSelection((previous) => {
                         const inventory = new Set(previous.inventory)
                         if (inventory.has(itemIndex)) inventory.delete(itemIndex)
@@ -639,6 +712,7 @@ export default function App() {
                       items={characterStorage.stash}
                       selected={characterStorageSelection.stash}
                       loading={loading}
+                      readOnly={savesReadOnly}
                       onToggle={(itemIndex) => setCharacterStorageSelection((previous) => {
                         const stash = new Set(previous.stash)
                         if (stash.has(itemIndex)) stash.delete(itemIndex)
@@ -726,21 +800,21 @@ export default function App() {
                                     if (event.key === 'Enter') event.currentTarget.blur()
                                     if (event.key === 'Escape') { set(key === 'carried' ? characterData.gold.toString() : characterData.stash_gold.toString()); setEditingGold(null) }
                                   }}
-                                  disabled={loading || characterData.save_version !== 96 || !characterData.stats_validated}
+                                  disabled={loading || savesReadOnly || characterData.save_version !== 96 || !characterData.stats_validated}
                                   className="w-36 rounded border border-amber-700 bg-neutral-950 px-2 py-1 text-right text-white focus:outline-none"
                                 />
                               ) : (
                                 <button
                                   type="button"
                                   onClick={() => { setCarriedGoldDraft(String(characterData.gold)); setStashGoldDraft(String(characterData.stash_gold)); setEditingGold(key) }}
-                                  disabled={loading || characterData.save_version !== 96 || !characterData.stats_validated}
+                                  disabled={loading || savesReadOnly || characterData.save_version !== 96 || !characterData.stats_validated}
                                   className="font-semibold text-white underline decoration-dotted decoration-amber-600 underline-offset-4 hover:text-amber-200 disabled:opacity-50"
                                 >{value.toLocaleString()}</button>
                               )}
                             </div>
                             <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
                               <span>Max {limit.toLocaleString()}</span>
-                              <button type="button" className="text-amber-300 hover:text-amber-100 disabled:opacity-40" disabled={loading || value === limit || characterData.save_version !== 96 || !characterData.stats_validated} onClick={() => {
+                              <button type="button" className="text-amber-300 hover:text-amber-100 disabled:opacity-40" disabled={loading || savesReadOnly || value === limit || characterData.save_version !== 96 || !characterData.stats_validated} onClick={() => {
                                 const carried = key === 'carried' ? String(limit) : String(characterData.gold)
                                 const stash = key === 'stash' ? String(limit) : String(characterData.stash_gold)
                                 setCarriedGoldDraft(carried); setStashGoldDraft(stash)
@@ -789,6 +863,7 @@ export default function App() {
                       key={selected.path}
                       selected={selected}
                       character={characterData}
+                      readOnly={savesReadOnly}
                       onSaved={async (path) => {
                         const [refreshed, updatedData, versions] = await Promise.all([
                           scanCharacters(saveDir, autoCharacterBackups),
@@ -849,7 +924,7 @@ export default function App() {
                                 <div className="text-sm text-white">{formatWhen(version.created_at)}</div>
                                 <div className="text-xs text-gray-500">{(version.file_size / 1024).toFixed(1)} KB · verified</div>
                               </div>
-                              <button onClick={() => void handleRestoreCharacterBackup(version)} disabled={loading} className="rounded border border-amber-900/70 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-950/50 disabled:opacity-50">Restore this version</button>
+                              <button onClick={() => void handleRestoreCharacterBackup(version)} disabled={loading || savesReadOnly} title={savesReadOnly ? 'Quit Diablo II before restoring a character save' : undefined} className="rounded border border-amber-900/70 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-950/50 disabled:opacity-50">Restore this version</button>
                             </li>
                           ))}
                         </ul>
@@ -887,7 +962,7 @@ export default function App() {
                             <div key={`${item.slot}-${item.code}`} className="flex items-start justify-between gap-3 rounded border border-neutral-800 bg-neutral-950/50 p-3">
                               <div className="flex min-w-0 items-center gap-3">
                                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-neutral-800 bg-black/40 p-1">
-                                  {classicItemIcon(item.code) ? <img src={classicItemIcon(item.code)!} alt="" className="d2-item-sprite max-h-full max-w-full object-contain" draggable={false} /> : <span className="font-mono text-[9px] text-neutral-600">{item.code}</span>}
+                                  {classicItemIcon(item.code) ? <img src={classicItemIcon(item.code)!} alt="" className="max-h-full max-w-full object-contain" draggable={false} /> : <span className="font-mono text-[9px] text-neutral-600">{item.code}</span>}
                                 </div>
                                 <div className="min-w-0">
                                   <div className="text-sm font-medium text-white">{item.name}</div>
@@ -925,7 +1000,34 @@ export default function App() {
             <p className="text-sm text-gray-400 mt-1">
               Showing {filteredBankItems.length} of {bankItems.length} item{bankItems.length === 1 ? '' : 's'}
             </p>
+            <button onClick={() => duplicateReviewOpen ? setDuplicateReviewOpen(false) : void handleFindDuplicates()} disabled={loading} className="mt-3 rounded border border-amber-700/60 px-3 py-1.5 text-xs text-amber-200 hover:bg-amber-950/40 disabled:opacity-50">
+              {duplicateReviewOpen ? 'Close duplicate review' : 'Find duplicate fingerprints'}
+            </button>
           </div>
+
+          {duplicateReviewOpen && (
+            <section className="mb-5 rounded-lg border border-amber-800/50 bg-amber-950/20 p-4" aria-label="Duplicate fingerprint review">
+              <h3 className="font-semibold text-amber-100">Potential duplicate items</h3>
+              <p className="mt-1 text-xs text-gray-400">Matched by item code and nonzero game fingerprint. Review before removing a bank record; character save files are never changed here. Seed-zero gems and runes are excluded because that value cannot distinguish copies.</p>
+              {duplicateGroups.length === 0 ? <p className="mt-3 text-sm text-gray-400">No matching fingerprints found.</p> : (
+                <div className="mt-3 space-y-3">
+                  {duplicateGroups.map((group) => (
+                    <div key={`${group.code}-${group.seed}`} className="rounded border border-neutral-800 bg-neutral-950/70 p-3">
+                      <p className="text-sm font-medium text-white">{group.items[0]?.base_item ?? group.code} <span className="font-mono text-xs text-gray-500">{group.code} · {group.seed.toString(16).padStart(8, '0')}</span></p>
+                      <ul className="mt-2 divide-y divide-neutral-800">
+                        {group.items.map((duplicate) => (
+                          <li key={duplicate.id} className="flex flex-wrap items-center gap-2 py-2 text-xs">
+                            <span className="mr-auto text-gray-300">{duplicate.source_character}{duplicate.transferred_to ? ` · transferred to ${duplicate.transferred_to}` : ' · in bank'}</span>
+                            <button onClick={() => void handleDeleteBankItem(duplicate.id)} className="rounded border border-red-900/70 px-2 py-1 text-red-300 hover:bg-red-950/50">Remove bank record</button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
             {bankItems.length > 0 && (
               <section className="mb-4 rounded-lg border border-red-950/70 bg-red-950/30 p-3">
@@ -950,7 +1052,7 @@ export default function App() {
                     <option value="stash">Personal stash</option>
                     <option value="inventory">Inventory</option>
                   </select>
-                  <button onClick={() => void handleExportSelected()} disabled={selectedBankIds.size === 0 || !transferCharacterPath || loading} className="rounded bg-red-800 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-40">
+                  <button onClick={() => void handleExportSelected()} disabled={selectedBankIds.size === 0 || !transferCharacterPath || loading || savesReadOnly} title={savesReadOnly ? 'Quit Diablo II before transferring items to a character' : undefined} className="rounded bg-red-800 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-40">
                     {loading ? 'Transferring…' : 'Transfer selected'}
                   </button>
                 </div>
@@ -970,6 +1072,7 @@ export default function App() {
                   onChange={(e) => setBankSearch(e.target.value)}
                   className="bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-white placeholder:text-gray-400 focus:outline-none focus:border-red-700"
                 />
+                <AffixFilter value={bankAffixFilter} options={bankAffixOptions} onChange={setBankAffixFilter} />
                 <select value={bankTypeFilter} onChange={(e) => setBankTypeFilter(e.target.value)} className="bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm text-white">
                   <option value="">All item types</option>
                   {bankTypes.map((type) => <option key={type} value={type}>{type}</option>)}
@@ -1030,7 +1133,8 @@ export default function App() {
               </p>
               <button
                 onClick={() => void handleImportStashItems()}
-                disabled={loading}
+                disabled={loading || savesReadOnly}
+                title={savesReadOnly ? 'Quit Diablo II before modifying stash files' : undefined}
                 className="mt-4 text-sm bg-red-800 hover:bg-red-700 disabled:opacity-50 px-3 py-1.5 rounded"
               >
                 Choose stash to back up & move
@@ -1065,7 +1169,7 @@ export default function App() {
                         />
                         <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md border border-neutral-800 bg-black/40 p-1">
                           {details.iconPath ? (
-                            <img src={details.iconPath} alt="" className="d2-item-sprite max-h-full max-w-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]" loading="lazy" draggable={false} />
+                            <img src={details.iconPath} alt="" className="max-h-full max-w-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]" loading="lazy" draggable={false} />
                           ) : (
                             <span className="text-[9px] font-mono uppercase tracking-wide text-neutral-600">{item.base_item.slice(0, 4)}</span>
                           )}

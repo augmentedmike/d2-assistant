@@ -59,6 +59,7 @@ export interface CharacterStorageItem {
   name: string
   seed: number
   fingerprint: string
+  details: string[]
   x: number
   y: number
   width: number
@@ -98,6 +99,24 @@ export interface BankImportResult {
   source_warning: string | null
 }
 
+export interface BankDepositResult {
+  moved: number
+  duplicates: string[]
+}
+
+export interface BankDuplicateItem {
+  id: number
+  base_item: string
+  source_character: string
+  transferred_to: string | null
+}
+
+export interface BankDuplicateGroup {
+  code: string
+  seed: number
+  items: BankDuplicateItem[]
+}
+
 export type NewBankItem = {
   base_item: string
   affixes_json: string
@@ -112,6 +131,10 @@ type ParseResult<T> = { type: 'Ok'; data: T } | { type: 'Err'; data: string }
 
 export async function getAppSetting(key: string): Promise<string | null> {
   return await invoke<string | null>('get_app_setting', { key })
+}
+
+export async function isDiabloRunning(): Promise<boolean> {
+  return await invoke<boolean>('is_diablo_running')
 }
 
 export async function setAppSetting(key: string, value: string): Promise<void> {
@@ -191,6 +214,10 @@ export async function bankGetItems(): Promise<BankItem[]> {
   return await invoke<BankItem[]>('bank_get_items')
 }
 
+export async function bankFindDuplicates(): Promise<BankDuplicateGroup[]> {
+  return await invoke<BankDuplicateGroup[]>('bank_find_duplicates')
+}
+
 export async function bankDeleteItem(id: number): Promise<void> {
   await invoke<void>('bank_delete_item', { id })
 }
@@ -205,8 +232,8 @@ export async function bankDepositCharacterItems(
   characterPath: string,
   source: 'stash' | 'inventory',
   selectedItems: Pick<CharacterStorageItem, 'item_index' | 'code' | 'seed' | 'fingerprint'>[],
-): Promise<number> {
-  return await invoke<number>('bank_deposit_character_items', { characterPath, source, selectedItems })
+): Promise<BankDepositResult> {
+  return await invoke<BankDepositResult>('bank_deposit_character_items', { characterPath, source, selectedItems })
 }
 
 export async function bankExportItems(

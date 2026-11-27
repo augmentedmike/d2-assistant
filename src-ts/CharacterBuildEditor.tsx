@@ -36,12 +36,16 @@ interface Props {
   selected: CharacterListing
   character: CharacterData
   onSaved: (path: string) => Promise<void>
+  readOnly: boolean
 }
 
-export default function CharacterBuildEditor({ selected, character, onSaved }: Props) {
+export default function CharacterBuildEditor({ selected, character, onSaved, readOnly }: Props) {
   const [build, setBuild] = useState<CharacterBuildData | null>(null)
   const [attributes, setAttributes] = useState<[number, number, number, number]>([
     character.strength, character.dexterity, character.vitality, character.energy,
+  ])
+  const [attributeDrafts, setAttributeDrafts] = useState<[string, string, string, string]>([
+    String(character.strength), String(character.dexterity), String(character.vitality), String(character.energy),
   ])
   const [skills, setSkills] = useState<number[]>([])
   const [activeTree, setActiveTree] = useState(0)
@@ -88,16 +92,33 @@ export default function CharacterBuildEditor({ selected, character, onSaved }: P
     return issues
   }, [build, character.level, rules, skills])
 
-  const changeAttribute = (index: number, delta: number) => {
-    if (!bases) return
-    setAttributes((current) => {
-      const next = [...current] as [number, number, number, number]
-      const available = statBudget - current.reduce((sum, value, i) => sum + value - bases[i], 0)
-      if (delta > 0 && available < delta) return current
-      if (next[index] + delta < bases[index]) return current
-      next[index] += delta
+  const updateAttributeDraft = (index: number, value: string) => {
+    setAttributeDrafts((current) => {
+      const next = [...current] as [string, string, string, string]
+      next[index] = value
       return next
     })
+  }
+
+  const commitAttributeDraft = (index: number) => {
+    if (!bases) return
+    const requested = Number(attributeDrafts[index])
+    if (!attributeDrafts[index].trim() || !Number.isInteger(requested)) {
+      updateAttributeDraft(index, String(attributes[index]))
+      return
+    }
+    const pointsSpentElsewhere = attributes.reduce(
+      (sum, value, attributeIndex) => sum + (attributeIndex === index ? 0 : value - bases[attributeIndex]),
+      0,
+    )
+    const maximum = bases[index] + statBudget - pointsSpentElsewhere
+    const target = Math.max(bases[index], Math.min(requested, maximum))
+    setAttributes((current) => {
+      const next = [...current] as [number, number, number, number]
+      next[index] = target
+      return next
+    })
+    updateAttributeDraft(index, String(target))
   }
 
   const changeSkill = (index: number, delta: number) => {
@@ -123,11 +144,15 @@ export default function CharacterBuildEditor({ selected, character, onSaved }: P
   const resetAllocations = () => {
     if (!bases || !rules) return
     setAttributes([...bases])
+    setAttributeDrafts(bases.map(String) as [string, string, string, string])
     setSkills(rules.skills.map(() => 0))
   }
 
   const resetAttributes = () => {
-    if (bases) setAttributes([...bases])
+    if (bases) {
+      setAttributes([...bases])
+      setAttributeDrafts(bases.map(String) as [string, string, string, string])
+    }
   }
 
   const resetSkills = () => {
@@ -135,7 +160,7 @@ export default function CharacterBuildEditor({ selected, character, onSaved }: P
   }
 
   const save = async () => {
-    if (!build || !rules || !bases || !dirty || skillErrors.length || unspentStats < 0 || unspentSkills < 0) return
+    if (readOnly || !build || !rules || !bases || !dirty || skillErrors.length || unspentStats < 0 || unspentSkills < 0) return
     const description = `Save these changes directly to ${selected.path}?\n\nAttributes: ${attributeNames.map((name, i) => `${name} ${[character.strength, character.dexterity, character.vitality, character.energy][i]} → ${attributes[i]}`).join(', ')}\nUnspent stat points: ${character.stat_points} → ${unspentStats}\nSkill points spent: ${build.skill_levels.reduce((sum, value) => sum + value, 0)} → ${skills.reduce((sum, value) => sum + value, 0)}\nUnspent skill points: ${character.skill_points} → ${unspentSkills}\n\nNo points are added. A verified versioned backup is created first.`
     if (!window.confirm(description)) return
     setBusy(true)
@@ -163,11 +188,13 @@ export default function CharacterBuildEditor({ selected, character, onSaved }: P
   }
 
   return (
-    <section className="md:col-span-2 rounded-lg border border-amber-900/60 bg-neutral-900 p-4">
+    <fieldset disabled={readOnly} className="md:col-span-2 disabled:opacity-70">
+    <section className="rounded-lg border border-amber-900/60 bg-neutral-900 p-4">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-wider text-amber-200">Skills & character points</h2>
           <p className="mt-1 text-xs text-gray-400">Points already spent can be reclaimed and reassigned. The editor never increases the earned point total.</p>
+          {readOnly && <p className="mt-2 text-xs text-amber-300">Read only while Diablo II or D2R is running.</p>}
         </div>
         <button type="button" onClick={resetAllocations} disabled={busy || !hasAllocations} className="rounded border border-neutral-700 px-3 py-1.5 text-xs text-gray-200 hover:border-red-700 disabled:opacity-40">Respec all</button>
       </div>
@@ -176,9 +203,23 @@ export default function CharacterBuildEditor({ selected, character, onSaved }: P
         <div className="rounded border border-neutral-800 bg-neutral-950 p-3">
           <div className="mb-2 flex items-center justify-between gap-2"><h3 className="font-semibold text-gray-200">Attributes</h3><div className="flex items-center gap-2"><span className="text-xs text-amber-300">{unspentStats} unspent</span><button type="button" onClick={resetAttributes} disabled={busy || !hasAttributeAllocations} className="text-xs text-gray-400 hover:text-white disabled:opacity-30">Reset</button></div></div>
           <div className="grid grid-cols-2 gap-2">
-            {attributeNames.map((name, index) => <div key={name} className="flex items-center justify-between rounded bg-neutral-900 px-2 py-1.5 text-sm">
-              <span className="text-gray-300">{name}</span><div className="flex items-center gap-2"><button type="button" aria-label={`Remove ${name} point`} disabled={busy || attributes[index] <= bases[index]} onClick={() => changeAttribute(index, -1)} className="rounded px-1 text-gray-300 hover:text-white disabled:opacity-30">−</button><span className="min-w-7 text-center font-semibold text-white">{attributes[index]}</span><button type="button" aria-label={`Add ${name} point`} disabled={busy || unspentStats < 1} onClick={() => changeAttribute(index, 1)} className="rounded px-1 text-amber-300 hover:text-amber-100 disabled:opacity-30">+</button></div>
-            </div>)}
+            {attributeNames.map((name, index) => <label key={name} className="flex items-center justify-between gap-2 rounded bg-neutral-900 px-2 py-1.5 text-sm">
+              <span className="text-gray-300">{name}</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                min={bases[index]}
+                max={attributes[index] + unspentStats}
+                step={1}
+                value={attributeDrafts[index]}
+                disabled={busy}
+                aria-label={`${name} target points`}
+                onChange={(event) => updateAttributeDraft(index, event.target.value)}
+                onBlur={() => commitAttributeDraft(index)}
+                onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur() }}
+                className="w-24 rounded border border-neutral-700 bg-neutral-950 px-2 py-1 text-right font-semibold text-white focus:border-amber-600 focus:outline-none disabled:opacity-50"
+              />
+            </label>)}
           </div>
           <p className="mt-2 text-[11px] text-gray-500">Class starting values: {bases.join(' / ')} · Changes reclaim or spend only this character’s earned stat points.</p>
         </div>
@@ -203,6 +244,7 @@ export default function CharacterBuildEditor({ selected, character, onSaved }: P
       {notice && <p className="mt-3 text-xs text-emerald-300">{notice}</p>}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-neutral-800 pt-4"><span className="text-xs text-gray-500">A versioned backup is saved before applying changes.</span><button type="button" onClick={() => void save()} disabled={busy || !dirty || unspentStats < 0 || unspentSkills < 0 || skillErrors.length > 0} className="rounded bg-red-800 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40">{busy ? 'Saving…' : 'Review and save'}</button></div>
     </section>
+    </fieldset>
   )
 }
 

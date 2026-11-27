@@ -4,7 +4,10 @@ use crate::bank::BankItem;
 use crate::d2x::{empty_d2x_stash, read_transferable_stash_items};
 use crate::database::open_app_db;
 use crate::grid::{find_grid_space, mark_grid};
-use crate::{capture_character_backup, now_secs, unique_sidecar_path, update_character_save_state};
+use crate::{
+    capture_character_backup, ensure_diablo_closed, now_secs, unique_sidecar_path,
+    update_character_save_state,
+};
 use ::d2s::{
     BodyLocation, D2Save, Item, ItemMode, ItemPosition, StorePage, TxtData,
     bits::{BitReader, BitWriter},
@@ -33,6 +36,7 @@ pub struct CharacterStorageItem {
     name: String,
     seed: u32,
     fingerprint: String,
+    details: Vec<String>,
     x: u8,
     y: u8,
     width: u8,
@@ -51,6 +55,27 @@ pub struct CharacterItemSelection {
 pub struct CharacterStorageItems {
     inventory: Vec<CharacterStorageItem>,
     stash: Vec<CharacterStorageItem>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BankDepositResult {
+    moved: usize,
+    duplicates: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BankDuplicateItem {
+    id: i64,
+    base_item: String,
+    source_character: String,
+    transferred_to: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BankDuplicateGroup {
+    code: String,
+    seed: u32,
+    items: Vec<BankDuplicateItem>,
 }
 
 #[command]
@@ -139,6 +164,57 @@ pub fn bank_get_items(app: tauri::AppHandle) -> Result<Vec<BankItem>, String> {
     Ok(items)
 }
 
+/// Find high-confidence duplicate fingerprints in the bank. Seed-zero items are omitted
+/// because common gems and runes do not carry a useful unique fingerprint.
+#[command]
+pub fn bank_find_duplicates(app: tauri::AppHandle) -> Result<Vec<BankDuplicateGroup>, String> {
+    let conn = open_app_db(&app)?;
+    let mut statement = conn
+        .prepare("SELECT id, base_item, source_character, transferred_to, item_data FROM bank_items WHERE item_data IS NOT NULL")
+        .map_err(|e| format!("could not inspect bank item records: {e}"))?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, Option<String>>(3)?,
+                row.get::<_, Vec<u8>>(4)?,
+            ))
+        })
+        .map_err(|e| format!("could not read bank item records: {e}"))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("could not collect bank item records: {e}"))?;
+    let txt = TxtData::embedded();
+    let mut groups = std::collections::HashMap::<(String, u32), Vec<BankDuplicateItem>>::new();
+    for (id, base_item, source_character, transferred_to, item_data) in rows {
+        let mut reader = BitReader::new(&item_data);
+        let Ok(item) = Item::read(&mut reader, txt, 96) else {
+            continue;
+        };
+        let code = item.code_string();
+        if item.seed == 0 {
+            continue;
+        }
+        groups
+            .entry((code, item.seed))
+            .or_default()
+            .push(BankDuplicateItem {
+                id,
+                base_item,
+                source_character,
+                transferred_to,
+            });
+    }
+    let mut duplicates = groups
+        .into_iter()
+        .filter(|(_, items)| items.len() > 1)
+        .map(|((code, seed), items)| BankDuplicateGroup { code, seed, items })
+        .collect::<Vec<_>>();
+    duplicates.sort_by(|a, b| a.code.cmp(&b.code).then(a.seed.cmp(&b.seed)));
+    Ok(duplicates)
+}
+
 #[command]
 pub fn bank_delete_item(app: tauri::AppHandle, id: i64) -> Result<(), String> {
     let conn = open_app_db(&app)?;
@@ -160,6 +236,7 @@ pub fn bank_import_stash_items(
     app: tauri::AppHandle,
     stash_path: String,
 ) -> Result<BankImportResult, String> {
+    ensure_diablo_closed()?;
     let source_path = Path::new(&stash_path);
     let raw_stash = fs::read(source_path)
         .map_err(|e| format!("could not read stash {}: {e}", source_path.display()))?;
@@ -268,6 +345,7 @@ pub fn bank_import_stash_items(
             transferred_to,
         });
     }
+    ensure_diablo_closed()?;
     tx.commit()
         .map_err(|e| format!("could not finish stash import: {e}"))?;
     let empty = empty_d2x_stash();
@@ -305,6 +383,14 @@ pub fn character_storage_items(character_path: String) -> Result<CharacterStorag
     let save =
         D2Save::from_bytes(&bytes).map_err(|e| format!("could not decode character save: {e}"))?;
     let txt = TxtData::embedded();
+    let stat_names = txt
+        .table(GameTable::ItemStatCost, save.version)
+        .map_err(|e| format!("could not load item stat names: {e}"))?
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .skip(1)
+        .map(|line| line.split('\t').next().unwrap_or("").to_string())
+        .collect::<Vec<_>>();
     let mut inventory = Vec::new();
     let mut stash = Vec::new();
     for (item_index, item) in save.items.0.iter().enumerate() {
@@ -322,13 +408,81 @@ pub fn character_storage_items(character_path: String) -> Result<CharacterStorag
                 item.code_string()
             )
         })?;
-        let (name, _) = bank_base_details(&item.code_string(), txt);
+        let (name, item_type) = bank_base_details(&item.code_string(), txt);
+        let mut details = vec![item_type, format!("{:?} quality", item.quality)];
+        let level_req = crate::d2x::item_level_requirement(
+            &item.code_string(),
+            &item.quality,
+            item.flags.contains(::d2s::ItemFlags::RUNEWORD),
+            txt,
+        );
+        details.push(if level_req < 0 {
+            "Level requirement: Unknown".into()
+        } else {
+            format!("Level requirement: {level_req}")
+        });
+        details.push(format!(
+            "Class requirement: {}",
+            crate::d2x::item_class_requirement(&item.code_string(), txt)
+        ));
+        if item.flags.contains(::d2s::ItemFlags::IDENTIFIED) {
+            details.push("Identified".into());
+        } else {
+            details.push("Unidentified".into());
+        }
+        if item.flags.contains(::d2s::ItemFlags::ETHEREAL) {
+            details.push("Ethereal".into());
+        }
+        if item.level > 0 {
+            details.push(format!("Item level {}", item.level));
+        }
+        if item.flags.contains(::d2s::ItemFlags::SOCKETED) || !item.sockets.is_empty() {
+            details.push(format!("{} socket(s)", item.sockets.len()));
+            for socketed in item.sockets.iter().flatten() {
+                let (socket_name, _) = bank_base_details(&socketed.code_string(), txt);
+                details.push(format!("Socketed: {socket_name}"));
+            }
+        }
+        for stat in item
+            .stats
+            .iter()
+            .chain(item.runeword_stats.iter().flatten())
+            .chain(item.set_bonus_stats.iter().flatten())
+        {
+            let raw_name = stat_names
+                .get(stat.id.0 as usize)
+                .map(String::as_str)
+                .unwrap_or("");
+            if raw_name.is_empty() {
+                continue;
+            }
+            let shift = txt
+                .stat_info(stat.id, save.version)
+                .map(|info| info.val_shift)
+                .unwrap_or(0);
+            let value = stat.value >> shift;
+            let layer = if stat.layer == 0 {
+                String::new()
+            } else {
+                format!(" (layer {})", stat.layer)
+            };
+            details.push(format!(
+                "{} {:+}{}",
+                display_stat_name(raw_name),
+                value,
+                layer
+            ));
+        }
+        if item.flags.contains(::d2s::ItemFlags::RUNEWORD) {
+            details.push("Runeword".into());
+        }
         let storage_item = CharacterStorageItem {
             item_index,
             code: item.code_string(),
             name,
             seed: item.seed,
             fingerprint: item_selection_fingerprint(item, txt, save.version)?,
+            details,
             x: item.position.inv_x,
             y: item.position.inv_y,
             width: info.inv_width.unwrap_or(1),
@@ -366,7 +520,8 @@ pub fn bank_deposit_character_items(
     character_path: String,
     source: String,
     selected_items: Vec<CharacterItemSelection>,
-) -> Result<usize, String> {
+) -> Result<BankDepositResult, String> {
+    ensure_diablo_closed()?;
     let store_page = match source.as_str() {
         "stash" => StorePage::Stash,
         "inventory" => StorePage::Inventory,
@@ -425,9 +580,9 @@ pub fn bank_deposit_character_items(
                     format!("could not encode {} for the bank: {e}", item.code_string())
                 })?;
             let (level_req, class_req) = crate::d2x::requirements_from_item_record(&item_data)?;
-            records.push((item, item_data, level_req, class_req));
+            records.push((item_index, item, item_data, level_req, class_req));
         } else {
-            remaining.push(item);
+            remaining.push((item_index, item));
         }
     }
     if records.len() != selected_by_index.len() {
@@ -436,18 +591,8 @@ pub fn bank_deposit_character_items(
                 .into(),
         );
     }
-    let mut fingerprints = std::collections::HashSet::new();
-    for (item, _, _, _) in &records {
-        if item.seed != 0 && !fingerprints.insert((item.code_string(), item.seed)) {
-            return Err(format!(
-                "{} appears more than once with the same fingerprint in this {source}; character left unchanged",
-                item.code_string()
-            ));
-        }
-    }
-
-    // Detect bank conflicts before creating a character version; failed/no-op deposits
-    // must not add backup history entries.
+    // Detect duplicates individually before creating a backup. A duplicate selection
+    // stays in the character; unique selected items can still move in the same batch.
     let check_conn = open_app_db(&app)?;
     let bank_records = {
         let mut statement = check_conn
@@ -461,28 +606,40 @@ pub fn bank_deposit_character_items(
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| format!("could not read bank fingerprints: {e}"))?
     };
-    for (item, _, _, _) in &records {
-        if item.seed == 0 {
-            continue;
-        }
+    let mut seen = std::collections::HashSet::new();
+    let mut duplicates = Vec::new();
+    let mut accepted = Vec::with_capacity(records.len());
+    for record in records {
+        let (item_index, item, _, _, _) = &record;
         let code = item.code_string();
-        let conflicting_duplicate = bank_records
-            .iter()
-            .filter_map(|(data, transferred_to)| {
+        let key = (code.clone(), item.seed);
+        let repeated_in_selection = item.seed != 0 && !seen.insert(key);
+        let conflicting_duplicate = item.seed != 0
+            && bank_records.iter().any(|(data, transferred_to)| {
                 let mut reader = BitReader::new(data);
-                let bank_item = Item::read(&mut reader, txt, save.version).ok()?;
-                (bank_item.code_string() == code && bank_item.seed == item.seed)
-                    .then_some(transferred_to.as_deref())
-            })
-            .any(|target| target != Some(character_path.as_str()));
-        if conflicting_duplicate {
-            return Err(format!(
-                "{} already exists in the bank by item fingerprint; character left unchanged",
-                code
-            ));
+                Item::read(&mut reader, txt, save.version).is_ok_and(|bank_item| {
+                    bank_item.code_string() == code
+                        && bank_item.seed == item.seed
+                        && transferred_to.as_deref() != Some(character_path.as_str())
+                })
+            });
+        if repeated_in_selection || conflicting_duplicate {
+            duplicates.push(format!("{} (fingerprint {:08x})", code, item.seed));
+            remaining.push((*item_index, item.clone()));
+        } else {
+            accepted.push(record);
         }
     }
+    let records = accepted;
     drop(check_conn);
+
+    if records.is_empty() {
+        save.items.0 = remaining.into_iter().map(|(_, item)| item).collect();
+        return Ok(BankDepositResult {
+            moved: 0,
+            duplicates,
+        });
+    }
 
     // Do not change the save until its versioned backup is verified.
     capture_character_backup(&app, &path, true)?
@@ -518,11 +675,12 @@ pub fn bank_deposit_character_items(
             .map_err(|e| format!("could not read bank fingerprints: {e}"))?
     };
     let now = now_secs()?;
+    let snapshot_hash = format!("{:x}", Sha256::digest(&original_bytes));
     let source_character = path
         .file_stem()
         .and_then(|name| name.to_str())
         .unwrap_or("Character");
-    for (item, item_data, level_req, class_req) in &records {
+    for (item_index, item, item_data, level_req, class_req) in &records {
         let code = item.code_string();
         let duplicate = (item.seed != 0)
             .then(|| {
@@ -592,9 +750,8 @@ pub fn bank_deposit_character_items(
         }
         let metadata = serde_json::to_string(&values)
             .map_err(|e| format!("could not encode {} details: {e}", code))?;
-        let item_hash = format!("{:x}", Sha256::digest(item_data));
         let path_hash = format!("{:x}", Sha256::digest(path.to_string_lossy().as_bytes()));
-        let source_key = format!("D2S:{path_hash}:{item_hash}");
+        let source_key = format!("D2S:{path_hash}:{snapshot_hash}:{item_index}");
         tx.execute(
             "INSERT INTO bank_items (base_item, affixes_json, level_req, class_req, sockets, icon_path, source_character, banked_at, updated_at, item_data, source_key, requirements_decoded)
              VALUES (?1, ?2, ?3, ?4, ?5, NULL, ?6, ?7, ?7, ?8, ?9, 1)",
@@ -602,7 +759,8 @@ pub fn bank_deposit_character_items(
         ).map_err(|e| format!("could not add {} to the bank: {e}", code))?;
     }
 
-    save.items.0 = remaining;
+    remaining.sort_by_key(|(index, _)| *index);
+    save.items.0 = remaining.into_iter().map(|(_, item)| item).collect();
     let output_bytes = save
         .to_bytes()
         .map_err(|e| format!("could not encode updated character: {e}"))?;
@@ -620,6 +778,7 @@ pub fn bank_deposit_character_items(
         let _ = fs::remove_file(&temp_path);
         return Err("updated character byte verification failed".into());
     }
+    ensure_diablo_closed()?;
     fs::rename(&temp_path, &path).map_err(|e| format!("could not save updated character: {e}"))?;
     if let Err(error) = tx.commit() {
         let restore_path = unique_sidecar_path(&path, "deposit-restore", now);
@@ -636,7 +795,10 @@ pub fn bank_deposit_character_items(
         ));
     }
     update_character_save_state(&app, &path, &output_bytes)?;
-    Ok(records.len())
+    Ok(BankDepositResult {
+        moved: records.len(),
+        duplicates,
+    })
 }
 
 fn item_selection_fingerprint(item: &Item, txt: &TxtData, version: u32) -> Result<String, String> {
@@ -715,6 +877,64 @@ fn is_rune_code(code: &str) -> bool {
 
 fn display_stat_name(stat: &str) -> String {
     match stat {
+        "item_fastercastrate" => "Item Faster Cast Rate".into(),
+        "item_fastermovevelocity" => "Item Faster Run/Walk".into(),
+        "item_fasterattackrate" => "Item Increased Attack Speed".into(),
+        "item_fastergethitrate" => "Item Faster Hit Recovery".into(),
+        "item_fasterblockrate" => "Item Faster Block Rate".into(),
+        "item_manaafterkill" => "Item Mana After Each Kill".into(),
+        "item_healafterkill" => "Item Life After Each Kill".into(),
+        "item_healafterdemonkill" => "Item Life After Each Demon Kill".into(),
+        "item_goldbonus" => "Item Extra Gold from Monsters".into(),
+        "item_magicbonus" => "Item Better Chance of Getting Magic Items".into(),
+        "item_nonclassskill" => "Item Non-Class Skill".into(),
+        "item_restinpeace" => "Item Slain Monsters Rest in Peace".into(),
+        "item_poisonlengthresist" => "Item Poison Length Reduced".into(),
+        "item_ignoretargetac" => "Item Ignore Target Defense".into(),
+        "item_fractionaltargetac" => "Item Target Defense".into(),
+        "item_preventheal" => "Item Prevent Monster Heal".into(),
+        "item_halffreezeduration" => "Item Half Freeze Duration".into(),
+        "item_elemskill" => "Item Elemental Skill Damage".into(),
+        "item_indesctructible" => "Item Indestructible".into(),
+        "item_cannotbefrozen" => "Item Cannot Be Frozen".into(),
+        "item_staminadrainpct" => "Item Slower Stamina Drain".into(),
+        "item_absorbfire" => "Item Fire Absorb".into(),
+        "item_absorbfire_percent" => "Item Fire Absorb Percent".into(),
+        "item_absorblight" => "Item Lightning Absorb".into(),
+        "item_absorblight_percent" => "Item Lightning Absorb Percent".into(),
+        "item_absorbcold" => "Item Cold Absorb".into(),
+        "item_absorbcold_percent" => "Item Cold Absorb Percent".into(),
+        "item_absorbmagic" => "Item Magic Absorb".into(),
+        "item_absorbmagic_percent" => "Item Magic Absorb Percent".into(),
+        "item_kickdamage" => "Item Kick Damage".into(),
+        "item_numsockets" => "Item Number of Sockets".into(),
+        "item_stupidity" => "Item Hit Causes Monster to Flee".into(),
+        "item_attackertakeslightdamage" => "Item Attacker Takes Lightning Damage".into(),
+        "item_magicarrow" => "Item Fires Magic Arrows".into(),
+        "item_explosivearrow" => "Item Fires Explosive Arrows".into(),
+        "item_extrablood" => "Item Monsters Open Wounds".into(),
+        "item_reducedprices" => "Item Reduces Vendor Prices".into(),
+        "item_doubleherbduration" => "Item Double Herb Duration".into(),
+        "item_addclassskills" => "Item Class Skills".into(),
+        "item_skillondeath" => "Item Skill on Death".into(),
+        "damageaura" => "Aura Damage".into(),
+        "firemindam" => "Fire Minimum Damage".into(),
+        "firemaxdam" => "Fire Maximum Damage".into(),
+        "lightmindam" => "Lightning Minimum Damage".into(),
+        "lightmaxdam" => "Lightning Maximum Damage".into(),
+        "magicmindam" => "Magic Minimum Damage".into(),
+        "magicmaxdam" => "Magic Maximum Damage".into(),
+        "coldmindam" => "Cold Minimum Damage".into(),
+        "coldmaxdam" => "Cold Maximum Damage".into(),
+        "poisonmindam" => "Poison Minimum Damage".into(),
+        "poisonmaxdam" => "Poison Maximum Damage".into(),
+        "lifedrainmindam" => "Life Drain Minimum Damage".into(),
+        "lifedrainmaxdam" => "Life Drain Maximum Damage".into(),
+        "manadrainmindam" => "Mana Drain Minimum Damage".into(),
+        "manadrainmaxdam" => "Mana Drain Maximum Damage".into(),
+        "stamdrainmindam" => "Stamina Drain Minimum Damage".into(),
+        "stamdrainmaxdam" => "Stamina Drain Maximum Damage".into(),
+        "stunlength" => "Stun Length".into(),
         "fireresist" => "Fire resistance".into(),
         "coldresist" => "Cold resistance".into(),
         "lightresist" => "Lightning resistance".into(),
@@ -724,15 +944,231 @@ fn display_stat_name(stat: &str) -> String {
         "allskills" => "All skills".into(),
         other => other
             .split('_')
-            .map(|part| {
-                let mut chars = part.chars();
-                chars.next().map_or_else(String::new, |first| {
-                    first.to_uppercase().collect::<String>() + chars.as_str()
-                })
-            })
+            .map(display_stat_word)
             .collect::<Vec<_>>()
             .join(" "),
     }
+}
+
+fn display_stat_word(part: &str) -> String {
+    // ItemStatCost identifiers often concatenate multiple words (for example,
+    // `fastercastrate`). Split known Diablo stat terms so their UI labels stay readable.
+    const WORDS: &[&str] = &[
+        "velocity",
+        "recovery",
+        "duration",
+        "monster",
+        "monsters",
+        "vendor",
+        "prices",
+        "chance",
+        "getting",
+        "magic",
+        "items",
+        "slain",
+        "reduced",
+        "frozen",
+        "freeze",
+        "stamina",
+        "drain",
+        "double",
+        "herb",
+        "class",
+        "nonclass",
+        "skill",
+        "skills",
+        "attack",
+        "faster",
+        "block",
+        "rate",
+        "after",
+        "each",
+        "heal",
+        "kill",
+        "demon",
+        "gold",
+        "bonus",
+        "rest",
+        "peace",
+        "poison",
+        "length",
+        "resist",
+        "ignore",
+        "target",
+        "defense",
+        "prevent",
+        "half",
+        "elemental",
+        "elem",
+        "indesctructible",
+        "arrow",
+        "arrows",
+        "explosive",
+        "extra",
+        "blood",
+        "open",
+        "wounds",
+        "add",
+        "find",
+        "for",
+        "of",
+        "from",
+        "slower",
+        "damage",
+        "strength",
+        "dexterity",
+        "resistance",
+        "percent",
+        "maximum",
+        "minimum",
+        "increase",
+        "enhanced",
+        "against",
+        "undead",
+        "lightning",
+        "physical",
+        "absorb",
+        "replenish",
+        "regenerate",
+        "experience",
+        "requirements",
+        "attacker",
+        "takes",
+        "thorns",
+        "pierce",
+        "level",
+        "per",
+        "hit",
+        "cast",
+        "move",
+        "run",
+        "walk",
+        "cold",
+        "fire",
+        "life",
+        "mana",
+        "item",
+        "single",
+        "all",
+        "speed",
+        "to",
+        "on",
+        "howl",
+        "knockback",
+        "crushing",
+        "blow",
+        "deadly",
+        "strike",
+        "leech",
+        "steal",
+        "light",
+        "radius",
+        "thunder",
+        "frost",
+        "nova",
+        "charges",
+        "charge",
+        "indestructible",
+        "ethereal",
+        "socket",
+        "sockets",
+        "enhance",
+        "armor",
+        "max",
+        "min",
+        "num",
+        "color",
+        "normal",
+        "time",
+        "req",
+        "pct",
+        "in",
+        "cannot",
+        "be",
+        "ac",
+        "up",
+        "struck",
+        "causes",
+        "flee",
+        "stupidity",
+        "throwable",
+        "reanimate",
+        "regen",
+        "by",
+        "thrust",
+        "charged",
+        "quantity",
+        "durability",
+        "energy",
+        "vitality",
+        "accuracy",
+        "gems",
+        "attackrating",
+        "bone",
+        "points",
+        "new",
+        "iron",
+        "maiden",
+        "last",
+        "frame",
+        "player",
+        "count",
+        "weapon",
+        "chilling",
+        "concentration",
+        "conviction",
+        "decrepify",
+        "hand",
+        "athena",
+        "do",
+        "overlay",
+        "framerate",
+        "burning",
+        "progressive",
+        "conversion",
+        "modifierlist",
+        "secondary",
+        "reduction",
+        "unit",
+        "alignment",
+        "get",
+    ];
+
+    let mut remaining = part;
+    let mut words = Vec::new();
+    while !remaining.is_empty() {
+        let Some(word) = WORDS
+            .iter()
+            .filter(|word| remaining.starts_with(**word))
+            .max_by_key(|word| word.len())
+        else {
+            return title_stat_part(part);
+        };
+        words.push(*word);
+        remaining = &remaining[word.len()..];
+    }
+
+    words
+        .into_iter()
+        .map(|word| match word {
+            "to" => "to".to_string(),
+            "per" => "per".to_string(),
+            "on" => "on".to_string(),
+            "all" => "All".to_string(),
+            "undead" => "Undead".to_string(),
+            "ethereal" => "Ethereal".to_string(),
+            "indestructible" => "Indestructible".to_string(),
+            other => title_stat_part(other),
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn title_stat_part(part: &str) -> String {
+    let mut chars = part.chars();
+    chars.next().map_or_else(String::new, |first| {
+        first.to_uppercase().collect::<String>() + chars.as_str()
+    })
 }
 
 #[command]
@@ -742,6 +1178,7 @@ pub fn bank_export_items(
     character_path: String,
     destination: String,
 ) -> Result<String, String> {
+    ensure_diablo_closed()?;
     if item_ids.is_empty() {
         return Err("select at least one bank item".into());
     }
@@ -865,6 +1302,7 @@ pub fn bank_export_items(
         let _ = fs::remove_file(&temp_path);
         return Err("updated save byte verification failed".into());
     }
+    ensure_diablo_closed()?;
     fs::rename(&temp_path, &output_path)
         .map_err(|e| format!("could not finalize updated save: {e}"))?;
     update_character_save_state(&app, &output_path, &output_bytes)?;

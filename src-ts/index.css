@@ -26,7 +26,3 @@ body {
 button, input, select, summary {
   -webkit-tap-highlight-color: transparent;
 }
-
-.d2-item-sprite {
-  image-rendering: pixelated;
-}

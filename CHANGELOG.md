@@ -2,11 +2,24 @@
 
 ## Unreleased
 
+- Locked character and stash file writes while Diablo II or D2R is running, with a visible read-only state and backend process checks; the game does not reliably expose which character is loaded, so the guard covers all saves.
+- Expanded the README into a complete shipped-feature inventory and added an employer-facing engineering case study grounded in the repository's safeguards, quality harness, and Git history.
+- Added a manual Windows/Linux installer validation workflow that uploads short-lived artifacts without publishing a release.
+- Added a release command that updates version metadata, runs project quality gates, and commits, tags, and pushes a release; GitHub installer builds now wait for the same reusable quality workflow.
+- Fixed bank searches to match terms at word boundaries, preventing `Mage` from matching `Damage`.
+- Added a searchable affix filter to the bank and made affix text searchable in the main query, including short prefixes.
+- Added a timed explainer video script with voiceover, shot directions, and footage accuracy safeguards.
+- Fixed concatenated item stat labels across bank and character item details, including older stored records; skill bonuses resolve numeric layers to skill names.
+- Fixed character-to-bank source keys for identical seed-zero items; batch deposits now skip only repeated nonzero fingerprints and move the rest, and the bank has a review utility for removing selected duplicate records.
+- Corrected the vertical orientation of all classic item sprites and their DC6 conversion path; character-to-bank deposits now refresh the save data while preserving the current character subtab.
+- Added hover and keyboard-focus detail cards to character inventory and private-stash items, including parsed quality, status, item level, socket contents, and decoded item, set, and runeword stats.
+- Ordered character tabs as Overview, Skills & stats, Items, and Backups.
+- Replaced one-point attribute plus/minus clicking with direct target-value fields, capped by the character's earned stat points.
 - Changed bank search to update on each keystroke and match short terms at item-name/code word boundaries; added regression coverage for `tir`, `tal`, `eth`, item codes, and the “Crystal Sword” false match.
 - Added dedicated character tabs for Overview, Items, Skills & stats, and Backups; the character view now uses more of the available width and keeps skill editing and backup history out of the overview.
 - Reworked the global header into separate responsive navigation and page-action rows, and kept skill and attribute summaries stacked until there is enough room for two columns.
 - Added 470 transparent classic inventory sprite PNGs with a version 96 item-code mapping. Bank cards, character inventory/stash boxes, and equipped-item rows now show the original item art. Documented game-art ownership and conversion inputs in `docs/ITEM-ICONS.md`.
-- Render classic item sprites with nearest-neighbor scaling so their native pixel art stays crisp at UI sizes.
+- Kept storage grids close to the source sprites' native 28px cell size instead of stretching them across the full pane; removed forced pixelated enlargement.
 - Added character inventory and private stash grids with per-item selection and selective moves into the shared bank. Deposits create a verified versioned backup, remove only selected records from the original save in place, validate the result, and check nonzero item seeds against the bank to avoid duplicate transfers.
 - Made available bank items the default view and marked transferred history records as unavailable.
 - Hardened the Tauri WebView with a restrictive production CSP, a separate localhost-only Vite development CSP, and prototype freezing. Removed unused Tauri SQL/log plugins and the unneeded SQL frontend permission. Upgraded rusqlite to 0.41.1 to resolve the bundled SQLite memory-disclosure advisory; documented the full security review and remaining upstream/release hardening items in `docs/SECURITY-REVIEW.md`.

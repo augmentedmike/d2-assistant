@@ -26,6 +26,7 @@
     "metrics:duplication": "jscpd --min-lines 8 --min-tokens 60 --threshold 5 --reporters console --ignore '**/node_modules/**,**/dist/**,**/public/**,**/src-ts/data/**,**/src-rs/target/**' src-ts src-rs/src",
     "test:frontend": "bun test tests-ts",
     "test:rust": "cargo test --manifest-path src-rs/Cargo.toml",
+    "release": "bun scripts/release.ts",
     "preview": "vite preview",
     "tauri:dev": "tauri dev --config src-rs/tauri.conf.json",
     "tauri:build": "tauri build --config src-rs/tauri.conf.json"

@@ -4,7 +4,9 @@ The bank cards and character storage grids use the classic Diablo II inventory s
 
 The PNGs are extracted from Diablo II game art and remain Blizzard Entertainment property. Their inclusion does not change the MIT license for original D2 Assistant code, imply Blizzard endorsement, or grant rights to redistribute the game. The app bundles the converted PNGs and mapping; it does not read from or depend on another utility or a Diablo II installation at runtime.
 
-The source inventory art is low-resolution pixel art (commonly 28×28 or 56×56 pixels). The UI uses nearest-neighbor scaling (`image-rendering: pixelated`) to preserve sharp sprite edges when enlarging it.
+The source inventory art is low-resolution pixel art (commonly 28×28 or 56×56 pixels). Character storage grids use cells close to the source art's native 28px size so the sprites do not need to be enlarged across the full pane.
+
+DC6 frame scanlines are encoded bottom-to-top. The converter places each decoded row from the bottom of the PNG upward; the frame's separate flip flag is handled as a left-right flip.
 
 For maintainers who already have locally extracted original inventory sprites and the matching 256-color palette, regenerate the PNGs with:
 

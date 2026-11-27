@@ -9,7 +9,11 @@ permissions:
   contents: write
 
 jobs:
+  quality:
+    uses: ./.github/workflows/quality.yml
+
   build:
+    needs: quality
     strategy:
       fail-fast: false
       matrix:
@@ -56,11 +60,13 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: D2 Assistant ${{ github.ref_name }}
           releaseBody: |
-            Initial release for offline original Diablo II + Lord of Destruction save management.
+            Release notes: [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/CHANGELOG.md).
+
+            Offline character and item management for original Diablo II + Lord of Destruction.
 
             **D2R and online/Battle.net save files are not supported.** Optional D2R/Reign runeword references are informational only.
 
-            Keep independent backups. Stash import creates a verified backup and empties the selected stash; character exports create `_d2a` copies.
+            Character edits and transfers update the selected save in place after a verified backup. Stash imports create a verified backup before emptying the selected stash. Keep independent backups and close the game before editing saves.
           releaseDraft: true
           prerelease: false
           args: --config src-rs/tauri.conf.json --bundles ${{ matrix.bundles }} ${{ matrix.rust-target != '' && format('--target {0}', matrix.rust-target) || '' }}

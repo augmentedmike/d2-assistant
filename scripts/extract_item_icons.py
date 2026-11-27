@@ -25,13 +25,16 @@ def decode_frame(path: Path, palette: bytes) -> Image.Image:
         raise ValueError(f"{path.name}: invalid frame dimensions {width}x{height}")
     pixels = bytearray(width * height)
     cursor = frame_offset + 32
-    x = y = 0
-    while cursor < min(next_block, len(data)) and y < height:
+    x = 0
+    # DC6 scanlines are stored bottom-to-top, so the first decoded row is
+    # the image's bottom row. Write each decoded row into its final position.
+    y = height - 1
+    while cursor < min(next_block, len(data)) and y >= 0:
         command = data[cursor]
         cursor += 1
         if command == 0x80:
             x = 0
-            y += 1
+            y -= 1
             continue
         if command & 0x80:
             x = min(width, x + (command & 0x7F))
