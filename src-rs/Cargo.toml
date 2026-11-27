@@ -1,6 +1,6 @@
 [package]
 name = "d2-assistant"
-version = "0.1.0"
+version = "0.2.0"
 description = "A safer, searchable item bank for offline Diablo II: Lord of Destruction."
 authors = ["augmentedmike"]
 license = "MIT"

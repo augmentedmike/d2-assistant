@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 — 2026-11-27
+
 - Locked character and stash file writes while Diablo II or D2R is running, with a visible read-only state and backend process checks; the game does not reliably expose which character is loaded, so the guard covers all saves.
 - Expanded the README into a complete shipped-feature inventory and added an employer-facing engineering case study grounded in the repository's safeguards, quality harness, and Git history.
 - Added a manual Windows/Linux installer validation workflow that uploads short-lived artifacts without publishing a release.
