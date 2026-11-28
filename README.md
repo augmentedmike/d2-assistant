@@ -6,6 +6,8 @@
 
 D2 Assistant helps organize classic Diablo II items and move selected gear back onto local character saves. It is a native desktop app built with Tauri; item data stays on your computer.
 
+**One app replaces my GoMule + ATMA + D2 Character Editor shuffle.** Instead of switching between a muling tool, a stash manager, a character editor, and recipe websites, I use one offline workspace for a shared item bank, selective character transfers, modern search and filters, character editing, backups, and runeword recipes. It brings those workflows together with a responsive interface designed around selecting and moving many items quickly.
+
 > **Compatibility:** Character and stash editing currently targets original Diablo II + Lord of Destruction save files. Diablo II: Resurrected and online/Battle.net characters are not supported. D2R and Reign of the Warlock recipes are optional reference data only; turn them on from **Features** if you want to browse them.
 
 ## What it does

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Repositioned the README and v0.2.0 release copy around replacing the GoMule/ATMA/character-editor shuffle with one searchable offline workspace.
+
 ## 0.2.0 — 2026-11-27
 
 - Locked character and stash file writes while Diablo II or D2R is running, with a visible read-only state and backend process checks; the game does not reliably expose which character is loaded, so the guard covers all saves.
